@@ -1,0 +1,33 @@
+* {
+  box-sizing: border-box;
+}
+html, body, #app {
+  margin: 0;
+  height: 100%;
+  font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+  background: #f4f6f8;
+  color: #1f2937;
+}
+.page {
+  padding: 16px;
+}
+.page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+.page-header h2 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+}
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 12px;
+}
+.muted {
+  color: #6b7280;
+  font-size: 12px;
+}

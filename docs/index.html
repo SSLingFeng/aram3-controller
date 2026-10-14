@@ -1,0 +1,1303 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Aram3 网页端服务器控制器 · 方案计划书 v0.2</title>
+  <meta name="description" content="JDK 21 + Spring Boot 4 + Vue3 多实例 Arma 3 服务器管理控制器总体方案、数据库设计与实施计划（已确认定稿）" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="shell">
+    <aside class="toc" id="toc">
+      <h2>目录</h2>
+      <ol>
+        <li><a href="#overview">1. 项目概述</a></li>
+        <li><a href="#scope">2. 目标与范围</a></li>
+        <li><a href="#arch">3. 总体架构</a></li>
+        <li class="toc-sub"><a href="#arch-stack">3.1 技术栈</a></li>
+        <li class="toc-sub"><a href="#arch-runtime">3.2 运行时拓扑</a></li>
+        <li class="toc-sub"><a href="#arch-power">3.3 PowerShell / SteamCMD</a></li>
+        <li><a href="#modules">4. 功能模块</a></li>
+        <li><a href="#permission">5. 权限模型</a></li>
+        <li><a href="#db">6. 数据库设计</a></li>
+        <li class="toc-sub"><a href="#db-er">6.1 ER 关系图</a></li>
+        <li class="toc-sub"><a href="#db-tables">6.2 表清单与字段</a></li>
+        <li class="toc-sub"><a href="#db-rel">6.3 关联说明</a></li>
+        <li class="toc-sub"><a href="#db-sql">6.4 SQLite DDL 摘要</a></li>
+        <li><a href="#flows">7. 核心流程</a></li>
+        <li><a href="#api">8. 接口设计概要</a></li>
+        <li><a href="#dir">9. 工程目录建议</a></li>
+        <li><a href="#plan">10. 实施计划</a></li>
+        <li><a href="#risk">11. 风险与约束</a></li>
+        <li><a href="#questions">12. 已确认决策与遗留项</a></li>
+      </ol>
+    </aside>
+
+    <main class="main">
+      <!-- HERO -->
+      <header class="hero" id="top">
+        <div class="kicker">方案计划书 · v0.2（决策已确认）</div>
+        <h1>Aram3 网页端服务器控制器</h1>
+        <p class="lead">
+          基于 Windows 10 / Windows Server 的多实例 Arma 3 专用服务器（AppID <strong>233780</strong>）管理平台：
+          JDK 21 + Spring Boot 4 后端，Vue3 + Element Plus 前端，SQLite 落盘；
+          SteamCMD 真实账号更新本体与 Workshop 模组，PBO 地图上传，结构化启动命令 + RCON 运维（踢人/广播/定时启停）。
+        </p>
+        <div class="meta-row">
+          <span class="meta-chip">AppID 233780</span>
+          <span class="meta-chip">Steam 真实账号</span>
+          <span class="meta-chip">Workshop 模组</span>
+          <span class="meta-chip">PBO 地图</span>
+          <span class="meta-chip">RCON 运维</span>
+          <span class="meta-chip">Vue 3 + Element Plus</span>
+          <span class="meta-chip">SQLite</span>
+        </div>
+      </header>
+
+      <!-- 1 -->
+      <section class="section" id="overview">
+        <h2>1. 项目概述</h2>
+        <p class="sub">背景、定位与命名约定</p>
+        <p>
+          本项目目标是在一台 Windows 主机上，用浏览器统一管理多套游戏服务器实例（下称
+          <strong>Aram3 实例</strong>）。每个实例拥有独立的配置目录、端口、地图（PBO）与模组加载清单，
+          但共享同一套游戏服务器本体（SteamCMD / AppID <strong>233780</strong>）。
+        </p>
+        <p>
+          管理员通过 Web 控制台添加用户、分配角色与实例级操作权限；被授权用户可执行地图 PBO 上传/下载、
+          模组 Workshop 同步、结构化启动命令编辑、进程启停（手动/定时），以及通过 RCON 踢人、广播。
+          底层操作通过 PowerShell（自动探测 5/7）或 SteamCMD 进程完成，输出流式回传到前端。
+        </p>
+        <div class="callout ok">
+          <strong>已确认：</strong>AppID = <code>233780</code>；SteamCMD <strong>必须真实账号登录</strong>（匿名不可用）；
+          地图为 PBO 上传；模组<strong>全部</strong> Workshop 自动下载；启动命令采用结构化字段 + 附加参数；
+          需要 RCON（踢人/广播）与定时/手动启停；备份范围为<strong>项目自身数据</strong>（库与配置），不备份游戏本体。
+        </div>
+        <div class="grid-3">
+          <div class="card">
+            <span class="tag core">平台</span>
+            <h4>Web 管理面</h4>
+            <p>Vue3 + Element Plus，桌面优先，兼顾大屏运维工效；关键操作二次确认与审计。</p>
+          </div>
+          <div class="card">
+            <span class="tag ops">执行面</span>
+            <h4>进程与 CLI</h4>
+            <p>PowerShell 5/7 + SteamCMD + 游戏服务进程，统一任务队列、日志与超时控制。</p>
+          </div>
+          <div class="card">
+            <span class="tag ux">数据面</span>
+            <h4>SQLite 落盘</h4>
+            <p>单文件库便于备份迁移；文件类资产（地图/模组）走磁盘存储 + 元数据表。</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- 2 -->
+      <section class="section" id="scope">
+        <h2>2. 目标与范围</h2>
+        <p class="sub">In Scope / Out of Scope</p>
+        <h3>2.1 必须实现（P0）</h3>
+        <ul>
+          <li>多实例：基于配置根目录的子目录隔离；实例可独立启停与配置。</li>
+          <li>多用户：管理员创建账号；登录鉴权；会话管理。</li>
+          <li>权限：系统级权限（用户/系统设置）+ 实例级细粒度权限（地图、模组、配置、启停、日志、RCON 等）。</li>
+          <li>SteamCMD（真实账号）：AppID 233780 本体下载/更新/校验；Workshop 模组下载；输出可查看；本体多实例共享。</li>
+          <li>地图：<strong>PBO 文件</strong>上传、下载、删除、绑定实例。</li>
+          <li>模组：按 Workshop ID 自动下载/更新/删除；区分<strong>仅服务端加载</strong>（serverMod）与<strong>双端加载</strong>（mod）。</li>
+          <li>启动配置：<strong>结构化字段</strong>（端口、profile、mod/serverMod 列表、地图等）+ <strong>附加参数</strong>。</li>
+          <li>RCON：踢人、广播；在线玩家列表（若协议支持）。</li>
+          <li>进程启停：手动启停 + <strong>定时启停</strong>（cron 式计划）。</li>
+          <li>PowerShell 调用：自动探测 PS 7 → PS 5，命令执行与 stdout/stderr 回显。</li>
+          <li>项目数据备份（SQLite + 配置/元数据），不含游戏本体大文件。</li>
+          <li>操作审计与任务日志。</li>
+        </ul>
+        <h3>2.2 建议实现（P1）</h3>
+        <ul>
+          <li>WebSocket 实时日志 / 控制台。</li>
+          <li>仪表盘（实例概览、任务、资源占用）——<em>可选项，非必须</em>。</li>
+          <li>配置文件在线编辑（server.cfg / basic.cfg）与历史版本。</li>
+          <li>定时自动更新游戏本体。</li>
+        </ul>
+        <h3>2.3 暂不纳入（P2 / Out）</h3>
+        <ul>
+          <li>集群多机调度、容器化部署。</li>
+          <li>游戏内反作弊 / BattleEye 策略深度集成（仅保证 RCON 可用）。</li>
+          <li>游戏服务器本体备份。</li>
+          <li>本地上传模组（若 Workshop 全覆盖，可不做手动包安装）。</li>
+          <li>移动端原生 App。</li>
+        </ul>
+      </section>
+
+      <!-- 3 -->
+      <section class="section" id="arch">
+        <h2>3. 总体架构</h2>
+        <p class="sub">分层、运行时拓扑与系统集成</p>
+
+        <h3 id="arch-stack">3.1 技术栈</h3>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>层</th>
+                <th>选型</th>
+                <th>说明</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>运行时</td>
+                <td><code>JDK 21</code>（LTS）</td>
+                <td>Windows 10 / Windows Server；虚拟线程可选用于任务并发</td>
+              </tr>
+              <tr>
+                <td>后端框架</td>
+                <td><code>Spring Boot 4</code></td>
+                <td>Web、Validation、Security、WebSocket、Scheduling</td>
+              </tr>
+              <tr>
+                <td>数据访问</td>
+                <td>Spring Data JDBC <em>或</em> MyBatis-Plus</td>
+                <td>SQLite；避免强依赖 JPA 方言；单文件库 + WAL</td>
+              </tr>
+              <tr>
+                <td>鉴权</td>
+                <td>Spring Security + JWT（Access + Refresh）</td>
+                <td>接口鉴权 + 方法级 <code>@PreAuthorize</code>；实例权限在服务层二次校验</td>
+              </tr>
+              <tr>
+                <td>进程执行</td>
+                <td>ProcessBuilder + 超时/取消</td>
+                <td>PowerShell、SteamCMD、游戏服务进程；统一任务队列</td>
+              </tr>
+              <tr>
+                <td>实时通道</td>
+                <td>WebSocket / SSE</td>
+                <td>任务进度、服务器日志流、控制台输出</td>
+              </tr>
+              <tr>
+                <td>前端</td>
+                <td><code>Vue 3</code> + <code>Element Plus</code> + Vite + Pinia</td>
+                <td>TypeScript 建议；布局：侧栏导航 + 实例切换器</td>
+              </tr>
+              <tr>
+                <td>文件存储</td>
+                <td>本地磁盘目录约定</td>
+                <td>地图、模组、配置、日志、备份分目录；表中只存元数据与路径</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3 id="arch-runtime">3.2 运行时拓扑</h3>
+        <figure class="diagram" aria-label="系统架构图">
+          <svg viewBox="0 0 680 420" xmlns="http://www.w3.org/2000/svg" font-family="-apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif">
+            <defs>
+              <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                <path d="M 0 0 L 10 5 L 0 10 z" fill="#6b7688"/>
+              </marker>
+            </defs>
+            <rect x="40" y="30" width="600" height="360" rx="12" fill="#fffdf8" stroke="#ddd4c4"/>
+            <text x="340" y="52" text-anchor="middle" font-size="13" font-weight="600" fill="#16324f">Aram3 控制器运行时拓扑</text>
+
+            <!-- Browser -->
+            <rect x="70" y="80" width="160" height="56" rx="8" fill="#e6edf4" stroke="#16324f" stroke-width="0.8"/>
+            <text x="150" y="104" text-anchor="middle" font-size="13" fill="#16324f">浏览器</text>
+            <text x="150" y="122" text-anchor="middle" font-size="11" fill="#3d4a5c">Vue3 + Element Plus</text>
+
+            <!-- API -->
+            <rect x="260" y="80" width="160" height="56" rx="8" fill="#f3e2d6" stroke="#c45c26" stroke-width="0.8"/>
+            <text x="340" y="104" text-anchor="middle" font-size="13" fill="#c45c26">Spring Boot 4</text>
+            <text x="340" y="122" text-anchor="middle" font-size="11" fill="#3d4a5c">REST + WebSocket</text>
+
+            <!-- Security -->
+            <rect x="450" y="80" width="160" height="56" rx="8" fill="#dceee5" stroke="#2f6f4e" stroke-width="0.8"/>
+            <text x="530" y="104" text-anchor="middle" font-size="13" fill="#2f6f4e">Security / RBAC</text>
+            <text x="530" y="122" text-anchor="middle" font-size="11" fill="#3d4a5c">JWT + 实例权限</text>
+
+            <!-- Services -->
+            <rect x="70" y="180" width="540" height="70" rx="8" fill="#efeae1" stroke="#c4b8a3" stroke-width="0.8"/>
+            <text x="340" y="204" text-anchor="middle" font-size="12" font-weight="600" fill="#1c2430">服务层：Instance / Mod / Map / RCON / Schedule / Job / SteamCmd</text>
+            <text x="340" y="226" text-anchor="middle" font-size="11" fill="#6b7688">任务队列 · 进程生命周期 · Workshop 同步 · RCON 运维 · 审计</text>
+
+            <!-- Infra -->
+            <rect x="70" y="290" width="125" height="70" rx="8" fill="#fff" stroke="#ddd4c4"/>
+            <text x="132" y="318" text-anchor="middle" font-size="12" fill="#1c2430">SQLite</text>
+            <text x="132" y="338" text-anchor="middle" font-size="11" fill="#6b7688">元数据 / 权限</text>
+
+            <rect x="215" y="290" width="125" height="70" rx="8" fill="#fff" stroke="#ddd4c4"/>
+            <text x="277" y="318" text-anchor="middle" font-size="12" fill="#1c2430">本地磁盘</text>
+            <text x="277" y="338" text-anchor="middle" font-size="11" fill="#6b7688">地图 / 模组 / 配置</text>
+
+            <rect x="360" y="290" width="125" height="70" rx="8" fill="#fff" stroke="#ddd4c4"/>
+            <text x="422" y="318" text-anchor="middle" font-size="12" fill="#1c2430">SteamCMD</text>
+            <text x="422" y="338" text-anchor="middle" font-size="11" fill="#6b7688">本体下载 / 更新</text>
+
+            <rect x="505" y="290" width="105" height="70" rx="8" fill="#fff" stroke="#ddd4c4"/>
+            <text x="557" y="318" text-anchor="middle" font-size="12" fill="#1c2430">PowerShell</text>
+            <text x="557" y="338" text-anchor="middle" font-size="11" fill="#6b7688">PS 7 / PS 5</text>
+
+            <!-- arrows -->
+            <line x1="230" y1="108" x2="260" y2="108" stroke="#6b7688" stroke-width="1" marker-end="url(#arrow)"/>
+            <line x1="420" y1="108" x2="450" y2="108" stroke="#6b7688" stroke-width="1" marker-end="url(#arrow)"/>
+            <line x1="340" y1="136" x2="340" y2="180" stroke="#6b7688" stroke-width="1" marker-end="url(#arrow)"/>
+            <line x1="132" y1="290" x2="132" y2="250" stroke="#6b7688" stroke-width="1" marker-end="url(#arrow)"/>
+            <line x1="277" y1="290" x2="277" y2="250" stroke="#6b7688" stroke-width="1" marker-end="url(#arrow)"/>
+            <line x1="422" y1="290" x2="422" y2="250" stroke="#6b7688" stroke-width="1" marker-end="url(#arrow)"/>
+            <line x1="557" y1="290" x2="557" y2="250" stroke="#6b7688" stroke-width="1" marker-end="url(#arrow)"/>
+          </svg>
+          <figcaption>图 3-1 · 前端 → Spring Boot 服务层 → SQLite / 磁盘 / SteamCMD / PowerShell</figcaption>
+        </figure>
+
+        <h3 id="arch-power">3.3 PowerShell / SteamCMD / RCON 调用策略</h3>
+        <ul>
+          <li><strong>PowerShell 探测顺序：</strong>优先 <code>pwsh.exe</code>（PowerShell 7），失败则回落 <code>powershell.exe</code>（5.1）；启动时写入系统设置并允许管理员手动覆盖。</li>
+          <li><strong>执行模型：</strong>统一 <code>CommandJob</code>（命令、工作目录、环境变量、超时、是否交互）；stdout/stderr 按行推送到任务日志与 WebSocket。</li>
+          <li><strong>安全：</strong>禁止任意 shell 拼接用户输入；参数白名单 + 转义；实例路径由后端根据 ID 解析，不接受客户端任意绝对路径。</li>
+          <li><strong>SteamCMD（真实账号）：</strong>
+            匿名登录<strong>不可用</strong>。使用 <code>+login &lt;steam_user&gt; &lt;steam_pass&gt;</code>（密码支持 Steam Guard / 令牌需可配置）。
+            本体更新：<code>+force_install_dir &lt;path&gt; +app_update 233780 validate +quit</code>。
+            Workshop 模组：<code>+workshop_download_item &lt;workshop_app_id&gt; &lt;workshop_id&gt;</code>
+            （Arma 3 创意工坊条目通常挂在 AppID <strong>107410</strong>，下载后迁移/链接到模组库）。
+            账号密码使用可逆加密（如 Windows DPAPI / 主密钥 AES）存库或系统设置，禁止明文日志。
+          </li>
+          <li><strong>游戏进程：</strong>Windows 下直接启动 <code>arma3server_x64.exe</code> 并附加<strong>结构化参数</strong>；不长期挂在 PowerShell 会话里。</li>
+          <li><strong>RCON：</strong>按实例配置 RCON 地址/端口/密码（BattlEye RCON 或兼容协议）；能力：踢人、广播、拉取玩家列表。所有 RCON 操作写审计。</li>
+          <li><strong>定时启停：</strong>调度器（Spring Scheduling）读取 <code>instance_schedule</code>，到点创建启停任务；支持时区与启用/停用。</li>
+        </ul>
+        <div class="callout info">
+          <strong>人机工效提示：</strong>所有命令任务页都要有「运行中 / 成功 / 失败 / 取消」状态、耗时、完整日志下载按钮；
+          危险操作（删除模组、覆盖地图、更新本体）必须二次确认并写审计。
+        </div>
+      </section>
+
+      <!-- 4 -->
+      <section class="section" id="modules">
+        <h2>4. 功能模块</h2>
+        <p class="sub">前端信息架构与后端服务边界</p>
+        <div class="grid-2">
+          <div class="card">
+            <span class="tag core">M1</span>
+            <h4>账号与权限</h4>
+            <p>登录/登出、刷新令牌、用户管理、角色管理、实例权限分配、登录日志、强制下线。</p>
+          </div>
+          <div class="card">
+            <span class="tag core">M2</span>
+            <h4>实例管理</h4>
+            <p>实例 CRUD、根目录、端口、profile、状态机、手动启停、结构化启动命令 + 附加参数。</p>
+          </div>
+          <div class="card">
+            <span class="tag core">M3</span>
+            <h4>地图（PBO）</h4>
+            <p>PBO 上传/下载/删除；绑定实例；激活地图；校验和与大小。</p>
+          </div>
+          <div class="card">
+            <span class="tag core">M4</span>
+            <h4>模组（Workshop）</h4>
+            <p>按 Workshop ID 自动下载/更新/删除；实例加载清单；<code>load_type</code> = 仅服务端 / 双端；顺序。</p>
+          </div>
+          <div class="card">
+            <span class="tag ops">M5</span>
+            <h4>启动与配置</h4>
+            <p>结构化启动字段、附加参数、server/basic 配置编辑、生成启动命令预览、校验。</p>
+          </div>
+          <div class="card">
+            <span class="tag ops">M6</span>
+            <h4>本体 / SteamCMD</h4>
+            <p>真实账号配置（加密）、AppID 233780 更新/校验、Workshop 下载任务、进度与日志。</p>
+          </div>
+          <div class="card">
+            <span class="tag core">M7</span>
+            <h4>RCON 运维</h4>
+            <p>玩家列表、踢人、广播；权限位 <code>can_rcon</code>；操作审计。</p>
+          </div>
+          <div class="card">
+            <span class="tag core">M8</span>
+            <h4>定时启停</h4>
+            <p>cron 式计划（启动/重启/停止）、启用停用、最近执行记录；与手动启停共用任务管道。</p>
+          </div>
+          <div class="card">
+            <span class="tag ux">M9</span>
+            <h4>任务中心</h4>
+            <p>异步任务列表、过滤、重试、取消、日志查看；实时推送。</p>
+          </div>
+          <div class="card">
+            <span class="tag ux">M10</span>
+            <h4>审计 / 设置 / 备份</h4>
+            <p>审计检索；系统参数；Steam 账号；<strong>项目数据备份</strong>（SQLite + 配置元数据）。</p>
+          </div>
+        </div>
+
+        <h3>4.1 实例目录约定（示例）</h3>
+        <pre><code>D:\Aram3Controller\
+├─ game-server\                 # 系统共享本体（SteamCMD app_update 233780）
+├─ steamcmd\
+├─ workshop\                    # SteamCMD workshop_download_item 落盘区
+├─ data\
+│  └─ aram3.db                  # SQLite（项目备份范围）
+├─ storage\
+│  ├─ maps\                     # PBO 地图资产
+│  ├─ mods\                     # Workshop 模组镜像/链接
+│  ├─ backups\                  # 项目数据备份
+│  └─ uploads\                  # 临时上传
+├─ logs\
+└─ instances\
+   ├─ main-ops\                 # 实例配置根目录（唯一 code）
+   │  ├─ server.cfg
+   │  ├─ basic.cfg
+   │  ├─ profiles\
+   │  ├─ missions\
+   │  └─ mod-links\             # 按实例生成的模组链接/清单
+   └─ training\</code></pre>
+      </section>
+
+      <!-- 5 -->
+      <section class="section" id="permission">
+        <h2>5. 权限模型</h2>
+        <p class="sub">系统权限 + 实例级细粒度权限</p>
+        <p>
+          采用 <strong>RBAC（系统菜单/功能） + 实例 ACL（数据范围）</strong> 双层模型。
+          系统权限决定「能不能进这个功能页」；实例 ACL 决定「对某个实例能不能做某事」。
+        </p>
+
+        <h3>5.1 系统级权限码（示例）</h3>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>权限码</th><th>说明</th><th>默认角色</th></tr>
+            </thead>
+            <tbody>
+              <tr><td><code>user:manage</code></td><td>用户/角色管理</td><td>admin</td></tr>
+              <tr><td><code>system:settings</code></td><td>系统设置、SteamCMD、本体路径</td><td>admin</td></tr>
+              <tr><td><code>instance:create</code></td><td>创建/删除实例</td><td>admin</td></tr>
+              <tr><td><code>instance:grant</code></td><td>分配实例权限</td><td>admin</td></tr>
+              <tr><td><code>job:manage</code></td><td>任务取消/重试全局操作</td><td>admin</td></tr>
+              <tr><td><code>audit:view</code></td><td>查看审计</td><td>admin / auditor</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>5.2 实例级权限位（<code>user_instance_perm</code>）</h3>
+        <div class="table-wrap">
+          <table class="matrix">
+            <thead>
+              <tr>
+                <th>权限位</th>
+                <th>字段</th>
+                <th>含义</th>
+                <th class="center">Operator</th>
+                <th class="center">Mod Admin</th>
+                <th class="center">Viewer</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>查看实例</td><td><code>can_view</code></td>
+                <td>可见实例面板、状态、只读配置</td>
+                <td class="center yes">✓</td><td class="center yes">✓</td><td class="center yes">✓</td>
+              </tr>
+              <tr>
+                <td>启停进程</td><td><code>can_start_stop</code></td>
+                <td>启动/停止/重启游戏服务器</td>
+                <td class="center yes">✓</td><td class="center no">—</td><td class="center no">—</td>
+              </tr>
+              <tr>
+                <td>配置与启动命令</td><td><code>can_edit_config</code></td>
+                <td>server.cfg、启动参数、端口等</td>
+                <td class="center yes">✓</td><td class="center no">—</td><td class="center no">—</td>
+              </tr>
+              <tr>
+                <td>地图管理</td><td><code>can_manage_map</code></td>
+                <td>上传/下载/删除/切换地图</td>
+                <td class="center opt">可选</td><td class="center yes">✓</td><td class="center no">—</td>
+              </tr>
+              <tr>
+                <td>模组管理</td><td><code>can_manage_mod</code></td>
+                <td>模组增删更新、load_type、顺序</td>
+                <td class="center opt">可选</td><td class="center yes">✓</td><td class="center no">—</td>
+              </tr>
+              <tr>
+                <td>文件上传下载</td><td><code>can_transfer_files</code></td>
+                <td>资产传输类操作（可与地图/模组合并或细分）</td>
+                <td class="center opt">可选</td><td class="center yes">✓</td><td class="center no">—</td>
+              </tr>
+              <tr>
+                <td>查看日志</td><td><code>can_view_logs</code></td>
+                <td>服务器日志、任务日志</td>
+                <td class="center yes">✓</td><td class="center yes">✓</td><td class="center yes">✓</td>
+              </tr>
+              <tr>
+                <td>RCON 运维</td><td><code>can_rcon</code></td>
+                <td>踢人、广播、玩家列表</td>
+                <td class="center yes">✓</td><td class="center opt">可选</td><td class="center no">—</td>
+              </tr>
+              <tr>
+                <td>定时启停</td><td><code>can_schedule</code></td>
+                <td>配置/启停定时计划</td>
+                <td class="center yes">✓</td><td class="center no">—</td><td class="center no">—</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="small muted">
+          角色只是权限位模板；最终以 <code>user_instance_perm</code> 行为准。超级管理员 <code>is_super_admin=1</code> 绕过实例 ACL。
+        </p>
+      </section>
+
+      <!-- 6 -->
+      <section class="section" id="db">
+        <h2>6. 数据库设计</h2>
+        <p class="sub">SQLite · 核心实体、关联与 DDL 摘要</p>
+        <p>
+          采用「系统域 / 实例域 / 资产域 / 任务与调度域」。文件本体不入库，只存相对路径、大小、校验和。
+          Steam 凭据加密存储；时间字段统一 <code>TEXT</code>（ISO-8601）。
+          <strong>项目备份</strong>只覆盖 SQLite 与配置元数据，不含 <code>game-server\</code> 本体。
+        </p>
+
+        <h3 id="db-er">6.1 ER 关系图</h3>
+        <figure class="diagram" aria-label="数据库ER图">
+          <svg viewBox="0 0 680 520" xmlns="http://www.w3.org/2000/svg" font-family="-apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif">
+            <defs>
+              <marker id="er-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                <path d="M 0 0 L 10 5 L 0 10 z" fill="#16324f"/>
+              </marker>
+            </defs>
+            <rect x="20" y="16" width="640" height="488" rx="12" fill="#fffdf8" stroke="#ddd4c4"/>
+
+            <!-- helper to draw tables -->
+            <!-- sys_user -->
+            <g>
+              <rect x="40" y="40" width="150" height="78" rx="8" fill="#e6edf4" stroke="#16324f" stroke-width="1"/>
+              <text x="115" y="62" text-anchor="middle" font-size="12" font-weight="700" fill="#16324f">sys_user</text>
+              <text x="50" y="82" font-size="10" fill="#3d4a5c">id PK · username</text>
+              <text x="50" y="98" font-size="10" fill="#3d4a5c">password_hash · status</text>
+            </g>
+
+            <!-- sys_role -->
+            <g>
+              <rect x="230" y="40" width="150" height="78" rx="8" fill="#e6edf4" stroke="#16324f" stroke-width="1"/>
+              <text x="305" y="62" text-anchor="middle" font-size="12" font-weight="700" fill="#16324f">sys_role</text>
+              <text x="240" y="82" font-size="10" fill="#3d4a5c">id PK · code · name</text>
+              <text x="240" y="98" font-size="10" fill="#3d4a5c">is_system</text>
+            </g>
+
+            <!-- sys_user_role -->
+            <g>
+              <rect x="230" y="145" width="150" height="58" rx="8" fill="#f3e2d6" stroke="#c45c26" stroke-width="1"/>
+              <text x="305" y="170" text-anchor="middle" font-size="11" font-weight="700" fill="#c45c26">sys_user_role</text>
+              <text x="240" y="188" font-size="10" fill="#3d4a5c">user_id + role_id</text>
+            </g>
+
+            <!-- sys_role_permission -->
+            <g>
+              <rect x="430" y="40" width="180" height="78" rx="8" fill="#e6edf4" stroke="#16324f" stroke-width="1"/>
+              <text x="520" y="62" text-anchor="middle" font-size="12" font-weight="700" fill="#16324f">sys_role_permission</text>
+              <text x="440" y="82" font-size="10" fill="#3d4a5c">role_id · perm_code</text>
+              <text x="440" y="98" font-size="10" fill="#3d4a5c">system RBAC</text>
+            </g>
+
+            <!-- game_instance -->
+            <g>
+              <rect x="40" y="250" width="170" height="90" rx="8" fill="#dceee5" stroke="#2f6f4e" stroke-width="1.2"/>
+              <text x="125" y="274" text-anchor="middle" font-size="12" font-weight="700" fill="#2f6f4e">game_instance</text>
+              <text x="50" y="294" font-size="10" fill="#3d4a5c">id PK · code · name</text>
+              <text x="50" y="310" font-size="10" fill="#3d4a5c">root_path · port · status</text>
+              <text x="50" y="326" font-size="10" fill="#3d4a5c">start_script</text>
+            </g>
+
+            <!-- user_instance_perm -->
+            <g>
+              <rect x="40" y="375" width="170" height="90" rx="8" fill="#f3e2d6" stroke="#c45c26" stroke-width="1"/>
+              <text x="125" y="399" text-anchor="middle" font-size="11" font-weight="700" fill="#c45c26">user_instance_perm</text>
+              <text x="50" y="419" font-size="10" fill="#3d4a5c">user_id · instance_id</text>
+              <text x="50" y="435" font-size="10" fill="#3d4a5c">can_* 权限位</text>
+              <text x="50" y="451" font-size="10" fill="#3d4a5c">UNIQUE(user,instance)</text>
+            </g>
+
+            <!-- map_catalog -->
+            <g>
+              <rect x="250" y="250" width="150" height="78" rx="8" fill="#efeae1" stroke="#c4b8a3" stroke-width="1"/>
+              <text x="325" y="272" text-anchor="middle" font-size="12" font-weight="700" fill="#1c2430">map_catalog</text>
+              <text x="260" y="292" font-size="10" fill="#3d4a5c">id · name · file_path</text>
+              <text x="260" y="308" font-size="10" fill="#3d4a5c">checksum · source</text>
+            </g>
+
+            <!-- instance_map -->
+            <g>
+              <rect x="250" y="350" width="150" height="58" rx="8" fill="#efeae1" stroke="#c4b8a3" stroke-width="1"/>
+              <text x="325" y="375" text-anchor="middle" font-size="11" font-weight="700" fill="#1c2430">instance_map</text>
+              <text x="260" y="393" font-size="10" fill="#3d4a5c">instance_id · map_id · active</text>
+            </g>
+
+            <!-- mod_catalog -->
+            <g>
+              <rect x="430" y="250" width="170" height="78" rx="8" fill="#efeae1" stroke="#c4b8a3" stroke-width="1"/>
+              <text x="515" y="272" text-anchor="middle" font-size="12" font-weight="700" fill="#1c2430">mod_catalog</text>
+              <text x="440" y="292" font-size="10" fill="#3d4a5c">id · workshop_id · name</text>
+              <text x="440" y="308" font-size="10" fill="#3d4a5c">file_path · version</text>
+            </g>
+
+            <!-- instance_mod -->
+            <g>
+              <rect x="430" y="350" width="170" height="78" rx="8" fill="#f5ecd4" stroke="#9a6b12" stroke-width="1"/>
+              <text x="515" y="374" text-anchor="middle" font-size="11" font-weight="700" fill="#9a6b12">instance_mod</text>
+              <text x="440" y="394" font-size="10" fill="#3d4a5c">instance_id · mod_id</text>
+              <text x="440" y="410" font-size="10" fill="#3d4a5c">load_type · enabled · order</text>
+            </g>
+
+            <!-- job_task -->
+            <g>
+              <rect x="250" y="440" width="170" height="52" rx="8" fill="#e6edf4" stroke="#16324f" stroke-width="1"/>
+              <text x="335" y="462" text-anchor="middle" font-size="11" font-weight="700" fill="#16324f">job_task</text>
+              <text x="260" y="480" font-size="10" fill="#3d4a5c">type · status · created_by</text>
+            </g>
+
+            <!-- game_server_install -->
+            <g>
+              <rect x="450" y="440" width="160" height="52" rx="8" fill="#dceee5" stroke="#2f6f4e" stroke-width="1"/>
+              <text x="530" y="462" text-anchor="middle" font-size="11" font-weight="700" fill="#2f6f4e">game_server_install</text>
+              <text x="460" y="480" font-size="10" fill="#3d4a5c">path · version · build_id</text>
+            </g>
+
+            <!-- relations -->
+            <line x1="190" y1="70" x2="230" y2="70" stroke="#16324f" stroke-width="1" marker-end="url(#er-arrow)"/>
+            <text x="208" y="64" text-anchor="middle" font-size="9" fill="#6b7688">M:N</text>
+
+            <line x1="305" y1="118" x2="305" y2="145" stroke="#16324f" stroke-width="1" marker-end="url(#er-arrow)"/>
+            <line x1="115" y1="118" x2="115" y2="160" stroke="#c45c26" stroke-width="1"/>
+            <line x1="115" y1="160" x2="230" y2="160" stroke="#c45c26" stroke-width="1" marker-end="url(#er-arrow)"/>
+
+            <line x1="380" y1="70" x2="430" y2="70" stroke="#16324f" stroke-width="1" marker-end="url(#er-arrow)"/>
+
+            <line x1="125" y1="250" x2="125" y2="203" stroke="#2f6f4e" stroke-width="1"/>
+            <line x1="125" y1="203" x2="305" y2="203" stroke="#2f6f4e" stroke-width="1" stroke-dasharray="3 2"/>
+
+            <line x1="125" y1="340" x2="125" y2="375" stroke="#c45c26" stroke-width="1" marker-end="url(#er-arrow)"/>
+
+            <line x1="210" y1="280" x2="250" y2="280" stroke="#16324f" stroke-width="1" marker-end="url(#er-arrow)"/>
+            <line x1="325" y1="328" x2="325" y2="350" stroke="#16324f" stroke-width="1" marker-end="url(#er-arrow)"/>
+
+            <line x1="210" y1="310" x2="250" y2="310" stroke="#16324f" stroke-width="1" marker-end="url(#er-arrow)"/>
+            <line x1="210" y1="300" x2="230" y2="300" stroke="#16324f" stroke-width="0"/>
+
+            <line x1="400" y1="280" x2="430" y2="280" stroke="#16324f" stroke-width="1" marker-end="url(#er-arrow)"/>
+            <line x1="515" y1="328" x2="515" y2="350" stroke="#16324f" stroke-width="1" marker-end="url(#er-arrow)"/>
+            <line x1="210" y1="320" x2="430" y2="370" stroke="#9a6b12" stroke-width="1" stroke-dasharray="3 2"/>
+
+            <line x1="125" y1="420" x2="250" y2="455" stroke="#6b7688" stroke-width="1" stroke-dasharray="3 2"/>
+            <line x1="600" y1="320" x2="600" y2="440" stroke="#2f6f4e" stroke-width="1" stroke-dasharray="3 2"/>
+            <line x1="600" y1="320" x2="610" y2="320" stroke="#2f6f4e" stroke-width="0"/>
+          </svg>
+          <figcaption>图 6-1 · 核心 ER：用户/角色、实例、地图、模组、任务与共享本体</figcaption>
+        </figure>
+
+        <h3 id="db-tables">6.2 表清单与字段</h3>
+
+        <h4>6.2.1 <code>sys_user</code> — 系统用户</h4>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>字段</th><th>类型</th><th>约束</th><th>说明</th></tr></thead>
+            <tbody>
+              <tr><td><code>id</code></td><td>INTEGER</td><td><span class="badge pk">PK</span> AUTOINCREMENT</td><td>主键</td></tr>
+              <tr><td><code>username</code></td><td>TEXT</td><td><span class="badge idx">UNIQUE</span> NOT NULL</td><td>登录名</td></tr>
+              <tr><td><code>password_hash</code></td><td>TEXT</td><td>NOT NULL</td><td>BCrypt / Argon2</td></tr>
+              <tr><td><code>display_name</code></td><td>TEXT</td><td></td><td>显示名</td></tr>
+              <tr><td><code>email</code></td><td>TEXT</td><td></td><td>可选</td></tr>
+              <tr><td><code>status</code></td><td>INTEGER</td><td>DEFAULT 1</td><td><span class="badge enum">0</span> 禁用 <span class="badge enum">1</span> 启用</td></tr>
+              <tr><td><code>is_super_admin</code></td><td>INTEGER</td><td>DEFAULT 0</td><td>超管跳过实例 ACL</td></tr>
+              <tr><td><code>last_login_at</code></td><td>TEXT</td><td></td><td>ISO-8601</td></tr>
+              <tr><td><code>created_at</code> / <code>updated_at</code></td><td>TEXT</td><td>NOT NULL</td><td></td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h4>6.2.2 <code>sys_role</code> / <code>sys_user_role</code> / <code>sys_role_permission</code></h4>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>表</th><th>关键字段</th><th>说明</th></tr></thead>
+            <tbody>
+              <tr>
+                <td><code>sys_role</code></td>
+                <td><code>id</code> PK, <code>code</code> UNIQUE, <code>name</code>, <code>description</code>, <code>is_system</code></td>
+                <td>角色定义，如 admin / operator / mod_admin / viewer</td>
+              </tr>
+              <tr>
+                <td><code>sys_user_role</code></td>
+                <td><code>user_id</code> <span class="badge fk">FK</span>, <code>role_id</code> <span class="badge fk">FK</span>，PK 复合</td>
+                <td>用户-角色多对多</td>
+              </tr>
+              <tr>
+                <td><code>sys_role_permission</code></td>
+                <td><code>role_id</code> <span class="badge fk">FK</span>, <code>perm_code</code>，PK 复合</td>
+                <td>角色-系统权限码多对多</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h4>6.2.3 <code>game_instance</code> — 游戏实例</h4>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>字段</th><th>类型</th><th>约束</th><th>说明</th></tr></thead>
+            <tbody>
+              <tr><td><code>id</code></td><td>INTEGER</td><td><span class="badge pk">PK</span></td><td></td></tr>
+              <tr><td><code>code</code></td><td>TEXT</td><td><span class="badge idx">UNIQUE</span> NOT NULL</td><td>目录名 / 实例标识</td></tr>
+              <tr><td><code>name</code></td><td>TEXT</td><td>NOT NULL</td><td>展示名</td></tr>
+              <tr><td><code>description</code></td><td>TEXT</td><td></td><td></td></tr>
+              <tr><td><code>root_path</code></td><td>TEXT</td><td>NOT NULL</td><td>相对配置根目录的实例文件夹</td></tr>
+              <tr><td><code>game_port</code> / <code>steam_query_port</code></td><td>INTEGER</td><td></td><td>游戏 / 查询端口</td></tr>
+              <tr><td><code>rcon_host</code> / <code>rcon_port</code> / <code>rcon_password</code></td><td>TEXT / INTEGER / TEXT</td><td></td><td>RCON；密码建议加密</td></tr>
+              <tr><td><code>max_players</code></td><td>INTEGER</td><td></td><td></td></tr>
+              <tr><td><code>profile_name</code></td><td>TEXT</td><td></td><td>profile 子目录名</td></tr>
+              <tr><td><code>start_script</code></td><td>TEXT</td><td></td><td>可选：完整启动命令缓存（由结构化字段生成）</td></tr>
+              <tr><td><code>extra_args</code></td><td>TEXT</td><td></td><td>附加参数（结构化之外）</td></tr>
+              <tr><td><code>status</code></td><td>TEXT</td><td>DEFAULT 'STOPPED'</td><td><span class="badge enum">STOPPED</span> <span class="badge enum">STARTING</span> <span class="badge enum">RUNNING</span> <span class="badge enum">STOPPING</span> <span class="badge enum">ERROR</span></td></tr>
+              <tr><td><code>enabled</code></td><td>INTEGER</td><td>DEFAULT 1</td><td>是否启用</td></tr>
+              <tr><td><code>created_by</code></td><td>INTEGER</td><td><span class="badge fk">FK sys_user.id</span></td><td></td></tr>
+              <tr><td><code>created_at</code> / <code>updated_at</code></td><td>TEXT</td><td>NOT NULL</td><td></td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h4>6.2.4 <code>user_instance_perm</code> — 实例 ACL</h4>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>字段</th><th>类型</th><th>约束</th><th>说明</th></tr></thead>
+            <tbody>
+              <tr><td><code>id</code></td><td>INTEGER</td><td><span class="badge pk">PK</span></td><td></td></tr>
+              <tr><td><code>user_id</code></td><td>INTEGER</td><td><span class="badge fk">FK sys_user.id</span> NOT NULL</td><td></td></tr>
+              <tr><td><code>instance_id</code></td><td>INTEGER</td><td><span class="badge fk">FK game_instance.id</span> NOT NULL</td><td></td></tr>
+              <tr><td><code>can_view</code></td><td>INTEGER</td><td>DEFAULT 1</td><td>查看</td></tr>
+              <tr><td><code>can_start_stop</code></td><td>INTEGER</td><td>DEFAULT 0</td><td>启停</td></tr>
+              <tr><td><code>can_edit_config</code></td><td>INTEGER</td><td>DEFAULT 0</td><td>配置/启动命令</td></tr>
+              <tr><td><code>can_manage_map</code></td><td>INTEGER</td><td>DEFAULT 0</td><td>地图</td></tr>
+              <tr><td><code>can_manage_mod</code></td><td>INTEGER</td><td>DEFAULT 0</td><td>模组</td></tr>
+              <tr><td><code>can_transfer_files</code></td><td>INTEGER</td><td>DEFAULT 0</td><td>上传下载</td></tr>
+              <tr><td><code>can_view_logs</code></td><td>INTEGER</td><td>DEFAULT 1</td><td>日志</td></tr>
+              <tr><td><code>can_exec_console</code></td><td>INTEGER</td><td>DEFAULT 0</td><td>控制台命令</td></tr>
+              <tr><td colspan="4"><span class="badge idx">UNIQUE</span> (<code>user_id</code>, <code>instance_id</code>)</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h4>6.2.5 <code>map_catalog</code> / <code>instance_map</code> — 地图（PBO）</h4>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>表</th><th>关键字段</th><th>说明</th></tr></thead>
+            <tbody>
+              <tr>
+                <td><code>map_catalog</code></td>
+                <td>
+                  <code>id</code> PK, <code>name</code>, <code>map_key</code>,
+                  <code>file_name</code>（*.pbo）, <code>file_path</code>, <code>file_size</code>,
+                  <code>checksum</code>, <code>source_type</code>=<code>upload</code>,
+                  <code>created_by</code>, timestamps
+                </td>
+                <td>地图以 <strong>PBO</strong> 上传；存放 <code>storage/maps</code></td>
+              </tr>
+              <tr>
+                <td><code>instance_map</code></td>
+                <td>
+                  <code>id</code> PK, <code>instance_id</code> FK, <code>map_id</code> FK,
+                  <code>is_active</code>, <code>sort_order</code>, <code>created_at</code>；
+                  UNIQUE(<code>instance_id</code>, <code>map_id</code>)
+                </td>
+                <td>实例绑定地图；同一实例仅一个 <code>is_active=1</code></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h4>6.2.6 <code>mod_catalog</code> / <code>instance_mod</code> — 模组（Workshop）</h4>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>表</th><th>关键字段</th><th>说明</th></tr></thead>
+            <tbody>
+              <tr>
+                <td><code>mod_catalog</code></td>
+                <td>
+                  <code>id</code> PK, <code>name</code>, <code>workshop_id</code>（必填）,
+                  <code>author</code>, <code>version</code>, <code>file_name</code>,
+                  <code>file_path</code>, <code>file_size</code>, <code>checksum</code>,
+                  <code>default_load_type</code>, <code>download_status</code>,
+                  <code>description</code>, timestamps
+                </td>
+                <td>
+                  全部模组来自 <strong>Steam Workshop 自动下载</strong>；
+                  <code>workshop_id</code> 用于 <code>+workshop_download_item</code>
+                </td>
+              </tr>
+              <tr>
+                <td><code>instance_mod</code></td>
+                <td>
+                  <code>id</code> PK, <code>instance_id</code> FK, <code>mod_id</code> FK,
+                  <code>load_type</code>, <code>enabled</code>, <code>load_order</code>,
+                  <code>custom_args</code>, <code>installed_at</code>, <code>updated_at</code>；
+                  UNIQUE(<code>instance_id</code>, <code>mod_id</code>)
+                </td>
+                <td>
+                  <code>load_type</code>：
+                  <span class="badge enum">SERVER_ONLY</span> 仅服务端（→ <code>-serverMod</code>）；
+                  <span class="badge enum">BOTH</span> 双端（→ <code>-mod</code>）
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h4>6.2.7 <code>steam_account</code> / <code>game_server_install</code> — Steam 与本体</h4>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>表</th><th>关键字段</th><th>说明</th></tr></thead>
+            <tbody>
+              <tr>
+                <td><code>steam_account</code></td>
+                <td>
+                  <code>id</code> PK, <code>username</code>, <code>password_enc</code>（加密）,
+                  <code>steam_guard_token</code>（加密，可选）, <code>is_default</code>,
+                  <code>status</code>, timestamps
+                </td>
+                <td>
+                  SteamCMD <strong>真实账号</strong>；匿名不可用。密码/令牌可逆加密（DPAPI/AES），
+                  禁止明文日志。默认账号用于系统任务。
+                </td>
+              </tr>
+              <tr>
+                <td><code>game_server_install</code></td>
+                <td>
+                  <code>id</code> PK, <code>install_path</code>, <code>steamcmd_path</code>,
+                  <code>app_id</code>=233780, <code>workshop_app_id</code>（如 107410）,
+                  <code>steam_account_id</code> FK, <code>version</code>, <code>build_id</code>,
+                  <code>status</code>, <code>last_update_at</code>
+                </td>
+                <td>共享本体单例；多实例引用同一安装目录</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h4>6.2.8 <code>instance_schedule</code> — 定时启停</h4>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>字段</th><th>类型</th><th>约束</th><th>说明</th></tr></thead>
+            <tbody>
+              <tr><td><code>id</code></td><td>INTEGER</td><td><span class="badge pk">PK</span></td><td></td></tr>
+              <tr><td><code>instance_id</code></td><td>INTEGER</td><td><span class="badge fk">FK game_instance.id</span></td><td></td></tr>
+              <tr><td><code>action</code></td><td>TEXT</td><td>NOT NULL</td><td><span class="badge enum">START</span> <span class="badge enum">STOP</span> <span class="badge enum">RESTART</span></td></tr>
+              <tr><td><code>cron_expr</code></td><td>TEXT</td><td>NOT NULL</td><td>Quartz/cron 表达式</td></tr>
+              <tr><td><code>timezone</code></td><td>TEXT</td><td>DEFAULT 'Asia/Shanghai'</td><td></td></tr>
+              <tr><td><code>enabled</code></td><td>INTEGER</td><td>DEFAULT 1</td><td></td></tr>
+              <tr><td><code>next_run_at</code> / <code>last_run_at</code></td><td>TEXT</td><td></td><td>调度可观测</td></tr>
+              <tr><td><code>created_by</code></td><td>INTEGER</td><td><span class="badge fk">FK sys_user.id</span></td><td></td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h4>6.2.9 <code>job_task</code> — 异步任务</h4>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>字段</th><th>类型</th><th>约束</th><th>说明</th></tr></thead>
+            <tbody>
+              <tr><td><code>id</code></td><td>INTEGER</td><td><span class="badge pk">PK</span></td><td></td></tr>
+              <tr><td><code>job_type</code></td><td>TEXT</td><td>NOT NULL</td><td>
+                <span class="badge enum">GAME_UPDATE</span>
+                <span class="badge enum">WORKSHOP_DOWNLOAD</span>
+                <span class="badge enum">MOD_UPDATE</span>
+                <span class="badge enum">MAP_UPLOAD</span>
+                <span class="badge enum">SERVER_START</span>
+                <span class="badge enum">SERVER_STOP</span>
+                <span class="badge enum">RCON</span>
+                <span class="badge enum">BACKUP_PROJECT</span>
+                <span class="badge enum">POWERSHELL</span>
+                <span class="badge enum">VERIFY</span>
+              </td></tr>
+              <tr><td><code>target_type</code> / <code>target_id</code></td><td>TEXT / INTEGER</td><td></td><td>作用对象</td></tr>
+              <tr><td><code>payload_json</code></td><td>TEXT</td><td></td><td>参数快照</td></tr>
+              <tr><td><code>status</code></td><td>TEXT</td><td>NOT NULL</td><td>PENDING / RUNNING / SUCCESS / FAILED / CANCELLED</td></tr>
+              <tr><td><code>progress</code></td><td>INTEGER</td><td>DEFAULT 0</td><td>0-100</td></tr>
+              <tr><td><code>log_path</code></td><td>TEXT</td><td></td><td>完整日志文件</td></tr>
+              <tr><td><code>error_message</code></td><td>TEXT</td><td></td><td></td></tr>
+              <tr><td><code>created_by</code></td><td>INTEGER</td><td><span class="badge fk">FK sys_user.id</span></td><td>计划任务可为空或 system</td></tr>
+              <tr><td><code>created_at</code> / <code>started_at</code> / <code>finished_at</code></td><td>TEXT</td><td></td><td></td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h4>6.2.10 其他支撑表</h4>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>表</th><th>用途</th><th>关键字段</th></tr></thead>
+            <tbody>
+              <tr>
+                <td><code>instance_config_item</code></td>
+                <td>实例结构化配置（非文件大段内容时）</td>
+                <td><code>instance_id</code> FK, <code>config_key</code>, <code>config_value</code>, <code>config_group</code>, <code>updated_by</code></td>
+              </tr>
+              <tr>
+                <td><code>server_runtime</code></td>
+                <td>进程运行记录</td>
+                <td><code>instance_id</code> FK, <code>pid</code>, <code>start_command</code>, <code>started_at</code>, <code>stopped_at</code>, <code>exit_code</code>, <code>trigger_type</code>(manual/schedule)</td>
+              </tr>
+              <tr>
+                <td><code>sys_setting</code></td>
+                <td>系统键值配置</td>
+                <td><code>key</code> PK, <code>value</code>, <code>description</code>, <code>updated_at</code></td>
+              </tr>
+              <tr>
+                <td><code>audit_log</code></td>
+                <td>操作审计</td>
+                <td><code>user_id</code>, <code>action</code>, <code>target_type</code>, <code>target_id</code>, <code>detail_json</code>, <code>ip</code>, <code>created_at</code></td>
+              </tr>
+              <tr>
+                <td><code>backup_record</code></td>
+                <td>项目数据备份</td>
+                <td><code>id</code>, <code>file_path</code>, <code>file_size</code>, <code>checksum</code>, <code>status</code>, <code>created_by</code>, <code>created_at</code></td>
+              </tr>
+              <tr>
+                <td><code>user_token</code>（可选）</td>
+                <td>Refresh Token / 强制下线</td>
+                <td><code>user_id</code>, <code>token_hash</code>, <code>expires_at</code>, <code>revoked</code></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3 id="db-rel">6.3 关联说明</h3>
+        <ol>
+          <li><strong>用户 ↔ 角色：</strong>多对多（<code>sys_user_role</code>）；角色 ↔ 系统权限多对多（<code>sys_role_permission</code>）。</li>
+          <li><strong>用户 ↔ 实例：</strong>多对多，但带权限位（<code>user_instance_perm</code>）；一人可管多实例，一实例可被多人分管不同能力（含 <code>can_rcon</code> / <code>can_schedule</code>）。</li>
+          <li><strong>实例 ↔ 地图（PBO）：</strong>多对多（<code>instance_map</code>）；额外 <code>is_active</code> 标记当前地图。</li>
+          <li><strong>实例 ↔ 模组（Workshop）：</strong>多对多（<code>instance_mod</code>）；关联表承载 <code>load_type</code> / <code>enabled</code> / <code>load_order</code>。</li>
+          <li><strong>模组下载：</strong><code>mod_catalog.workshop_id</code> → SteamCMD <code>workshop_download_item</code>；可被多实例复用。</li>
+          <li><strong>Steam 账号：</strong><code>steam_account</code> → <code>game_server_install.steam_account_id</code>；真实账号，凭据加密。</li>
+          <li><strong>本体共享：</strong><code>game_server_install</code> 系统级单例；AppID 233780；实例不拥有本体副本。</li>
+          <li><strong>定时启停：</strong><code>instance_schedule</code> 1:N 于实例；到点生成 <code>job_task(SERVER_START/STOP)</code>，与手动启停同管道。</li>
+          <li><strong>备份：</strong><code>backup_record</code> 只覆盖项目库与配置元数据，不含游戏本体。</li>
+        </ol>
+
+        <h3 id="db-sql">6.4 SQLite DDL 摘要（可直接起步）</h3>
+        <pre><code><span class="sql-cmt">-- 系统用户</span>
+<span class="sql-kw">CREATE TABLE</span> sys_user (
+  id <span class="sql-type">INTEGER</span> <span class="sql-kw">PRIMARY KEY AUTOINCREMENT</span>,
+  username <span class="sql-type">TEXT</span> <span class="sql-kw">NOT NULL UNIQUE</span>,
+  password_hash <span class="sql-type">TEXT</span> <span class="sql-kw">NOT NULL</span>,
+  display_name <span class="sql-type">TEXT</span>,
+  email <span class="sql-type">TEXT</span>,
+  status <span class="sql-type">INTEGER</span> <span class="sql-kw">NOT NULL DEFAULT</span> 1,
+  is_super_admin <span class="sql-type">INTEGER</span> <span class="sql-kw">NOT NULL DEFAULT</span> 0,
+  last_login_at <span class="sql-type">TEXT</span>,
+  created_at <span class="sql-type">TEXT</span> <span class="sql-kw">NOT NULL</span>,
+  updated_at <span class="sql-type">TEXT</span> <span class="sql-kw">NOT NULL</span>
+);
+
+<span class="sql-kw">CREATE TABLE</span> sys_role (
+  id <span class="sql-type">INTEGER</span> <span class="sql-kw">PRIMARY KEY AUTOINCREMENT</span>,
+  code <span class="sql-type">TEXT</span> <span class="sql-kw">NOT NULL UNIQUE</span>,
+  name <span class="sql-type">TEXT</span> <span class="sql-kw">NOT NULL</span>,
+  description <span class="sql-type">TEXT</span>,
+  is_system <span class="sql-type">INTEGER</span> <span class="sql-kw">NOT NULL DEFAULT</span> 0,
+  created_at <span class="sql-type">TEXT</span> <span class="sql-kw">NOT NULL</span>
+);
+
+<span class="sql-kw">CREATE TABLE</span> sys_user_role (
+  user_id <span class="sql-type">INTEGER</span> <span class="sql-kw">NOT NULL REFERENCES</span> sys_user(id) <span class="sql-kw">ON DELETE CASCADE</span>,
+  role_id <span class="sql-type">INTEGER</span> <span class="sql-kw">NOT NULL REFERENCES</span> sys_role(id) <span class="sql-kw">ON DELETE CASCADE</span>,
+  <span class="sql-kw">PRIMARY KEY</span> (user_id, role_id)
+);
+
+<span class="sql-kw">CREATE TABLE</span> sys_role_permission (
+  role_id <span class="sql-type">INTEGER</span> <span class="sql-kw">NOT NULL REFERENCES</span> sys_role(id) <span class="sql-kw">ON DELETE CASCADE</span>,
+  perm_code <span class="sql-type">TEXT</span> <span class="sql-kw">NOT NULL</span>,
+  <span class="sql-kw">PRIMARY KEY</span> (role_id, perm_code)
+);
+
+<span class="sql-kw">CREATE TABLE</span> game_instance (
+  id <span class="sql-type">INTEGER</span> <span class="sql-kw">PRIMARY KEY AUTOINCREMENT</span>,
+  code <span class="sql-type">TEXT</span> <span class="sql-kw">NOT NULL UNIQUE</span>,
+  name <span class="sql-type">TEXT</span> <span class="sql-kw">NOT NULL</span>,
+  description <span class="sql-type">TEXT</span>,
+  root_path <span class="sql-type">TEXT</span> <span class="sql-kw">NOT NULL</span>,
+  game_port <span class="sql-type">INTEGER</span>,
+  steam_query_port <span class="sql-type">INTEGER</span>,
+  rcon_host <span class="sql-type">TEXT</span>,
+  rcon_port <span class="sql-type">INTEGER</span>,
+  rcon_password <span class="sql-type">TEXT</span>,
+  max_players <span class="sql-type">INTEGER</span>,
+  profile_name <span class="sql-type">TEXT</span>,
+  start_script <span class="sql-type">TEXT</span>,
+  extra_args <span class="sql-type">TEXT</span>,
+  status <span class="sql-type">TEXT</span> <span class="sql-kw">NOT NULL DEFAULT</span> <span class="sql-type">'STOPPED'</span>,
+  enabled <span class="sql-type">INTEGER</span> <span class="sql-kw">NOT NULL DEFAULT</span> 1,
+  created_by <span class="sql-type">INTEGER</span> <span class="sql-kw">REFERENCES</span> sys_user(id),
+  created_at <span class="sql-type">TEXT</span> <span class="sql-kw">NOT NULL</span>,
+  updated_at <span class="sql-type">TEXT</span> <span class="sql-kw">NOT NULL</span>
+);
+
+<span class="sql-kw">CREATE TABLE</span> user_instance_perm (
+  id <span class="sql-type">INTEGER</span> <span class="sql-kw">PRIMARY KEY AUTOINCREMENT</span>,
+  user_id <span class="sql-type">INTEGER</span> <span class="sql-kw">NOT NULL REFERENCES</span> sys_user(id) <span class="sql-kw">ON DELETE CASCADE</span>,
+  instance_id <span class="sql-type">INTEGER</span> <span class="sql-kw">NOT NULL REFERENCES</span> game_instance(id) <span class="sql-kw">ON DELETE CASCADE</span>,
+  can_view <span class="sql-type">INTEGER</span> <span class="sql-kw">NOT NULL DEFAULT</span> 1,
+  can_start_stop <span class="sql-type">INTEGER</span> <span class="sql-kw">NOT NULL DEFAULT</span> 0,
+  can_edit_config <span class="sql-type">INTEGER</span> <span class="sql-kw">NOT NULL DEFAULT</span> 0,
+  can_manage_map <span class="sql-type">INTEGER</span> <span class="sql-kw">NOT NULL DEFAULT</span> 0,
+  can_manage_mod <span class="sql-type">INTEGER</span> <span class="sql-kw">NOT NULL DEFAULT</span> 0,
+  can_transfer_files <span class="sql-type">INTEGER</span> <span class="sql-kw">NOT NULL DEFAULT</span> 0,
+  can_view_logs <span class="sql-type">INTEGER</span> <span class="sql-kw">NOT NULL DEFAULT</span> 1,
+  can_rcon <span class="sql-type">INTEGER</span> <span class="sql-kw">NOT NULL DEFAULT</span> 0,
+  can_schedule <span class="sql-type">INTEGER</span> <span class="sql-kw">NOT NULL DEFAULT</span> 0,
+  created_at <span class="sql-type">TEXT</span> <span class="sql-kw">NOT NULL</span>,
+  updated_at <span class="sql-type">TEXT</span> <span class="sql-kw">NOT NULL</span>,
+  <span class="sql-kw">UNIQUE</span> (user_id, instance_id)
+);
+
+<span class="sql-kw">CREATE TABLE</span> map_catalog (
+  id <span class="sql-type">INTEGER</span> <span class="sql-kw">PRIMARY KEY AUTOINCREMENT</span>,
+  name <span class="sql-type">TEXT</span> <span class="sql-kw">NOT NULL</span>,
+  map_key <span class="sql-type">TEXT</span>,
+  file_name <span class="sql-type">TEXT</span> <span class="sql-kw">NOT NULL</span>,
+  file_path <span class="sql-type">TEXT</span> <span class="sql-kw">NOT NULL</span>,
+  file_size <span class="sql-type">INTEGER</span>,
+  checksum <span class="sql-type">TEXT</span>,
+  source_type <span class="sql-type">TEXT</span> <span class="sql-kw">NOT NULL DEFAULT</span> <span class="sql-type">'upload'</span>,
+  created_by <span class="sql-type">INTEGER</span> <span class="sql-kw">REFERENCES</span> sys_user(id),
+  created_at <span class="sql-type">TEXT</span> <span class="sql-kw">NOT NULL</span>,
+  updated_at <span class="sql-type">TEXT</span> <span class="sql-kw">NOT NULL</span>
+);
+
+<span class="sql-kw">CREATE TABLE</span> instance_map (
+  id <span class="sql-type">INTEGER</span> <span class="sql-kw">PRIMARY KEY AUTOINCREMENT</span>,
+  instance_id <span class="sql-type">INTEGER</span> <span class="sql-kw">NOT NULL REFERENCES</span> game_instance(id) <span class="sql-kw">ON DELETE CASCADE</span>,
+  map_id <span class="sql-type">INTEGER</span> <span class="sql-kw">NOT NULL REFERENCES</span> map_catalog(id) <span class="sql-kw">ON DELETE CASCADE</span>,
+  is_active <span class="sql-type">INTEGER</span> <span class="sql-kw">NOT NULL DEFAULT</span> 0,
+  sort_order <span class="sql-type">INTEGER</span> <span class="sql-kw">NOT NULL DEFAULT</span> 0,
+  created_at <span class="sql-type">TEXT</span> <span class="sql-kw">NOT NULL</span>,
+  <span class="sql-kw">UNIQUE</span> (instance_id, map_id)
+);
+
+<span class="sql-kw">CREATE TABLE</span> mod_catalog (
+  id <span class="sql-type">INTEGER</span> <span class="sql-kw">PRIMARY KEY AUTOINCREMENT</span>,
+  name <span class="sql-type">TEXT</span> <span class="sql-kw">NOT NULL</span>,
+  workshop_id <span class="sql-type">TEXT</span> <span class="sql-kw">NOT NULL UNIQUE</span>,
+  author <span class="sql-type">TEXT</span>,
+  version <span class="sql-type">TEXT</span>,
+  file_name <span class="sql-type">TEXT</span>,
+  file_path <span class="sql-type">TEXT</span>,
+  file_size <span class="sql-type">INTEGER</span>,
+  checksum <span class="sql-type">TEXT</span>,
+  default_load_type <span class="sql-type">TEXT</span> <span class="sql-kw">NOT NULL DEFAULT</span> <span class="sql-type">'BOTH'</span>,
+  download_status <span class="sql-type">TEXT</span> <span class="sql-kw">NOT NULL DEFAULT</span> <span class="sql-type">'PENDING'</span>,
+  description <span class="sql-type">TEXT</span>,
+  created_by <span class="sql-type">INTEGER</span> <span class="sql-kw">REFERENCES</span> sys_user(id),
+  created_at <span class="sql-type">TEXT</span> <span class="sql-kw">NOT NULL</span>,
+  updated_at <span class="sql-type">TEXT</span> <span class="sql-kw">NOT NULL</span>
+);
+
+<span class="sql-kw">CREATE TABLE</span> instance_mod (
+  id <span class="sql-type">INTEGER</span> <span class="sql-kw">PRIMARY KEY AUTOINCREMENT</span>,
+  instance_id <span class="sql-type">INTEGER</span> <span class="sql-kw">NOT NULL REFERENCES</span> game_instance(id) <span class="sql-kw">ON DELETE CASCADE</span>,
+  mod_id <span class="sql-type">INTEGER</span> <span class="sql-kw">NOT NULL REFERENCES</span> mod_catalog(id) <span class="sql-kw">ON DELETE CASCADE</span>,
+  load_type <span class="sql-type">TEXT</span> <span class="sql-kw">NOT NULL CHECK</span> (load_type <span class="sql-kw">IN</span> (<span class="sql-type">'SERVER_ONLY'</span>, <span class="sql-type">'BOTH'</span>)),
+  enabled <span class="sql-type">INTEGER</span> <span class="sql-kw">NOT NULL DEFAULT</span> 1,
+  load_order <span class="sql-type">INTEGER</span> <span class="sql-kw">NOT NULL DEFAULT</span> 0,
+  custom_args <span class="sql-type">TEXT</span>,
+  installed_at <span class="sql-type">TEXT</span> <span class="sql-kw">NOT NULL</span>,
+  updated_at <span class="sql-type">TEXT</span> <span class="sql-kw">NOT NULL</span>,
+  <span class="sql-kw">UNIQUE</span> (instance_id, mod_id)
+);
+
+<span class="sql-kw">CREATE TABLE</span> steam_account (
+  id <span class="sql-type">INTEGER</span> <span class="sql-kw">PRIMARY KEY AUTOINCREMENT</span>,
+  username <span class="sql-type">TEXT</span> <span class="sql-kw">NOT NULL UNIQUE</span>,
+  password_enc <span class="sql-type">TEXT</span> <span class="sql-kw">NOT NULL</span>,
+  guard_token_enc <span class="sql-type">TEXT</span>,
+  is_default <span class="sql-type">INTEGER</span> <span class="sql-kw">NOT NULL DEFAULT</span> 0,
+  status <span class="sql-type">TEXT</span> <span class="sql-kw">NOT NULL DEFAULT</span> <span class="sql-type">'OK'</span>,
+  created_at <span class="sql-type">TEXT</span> <span class="sql-kw">NOT NULL</span>,
+  updated_at <span class="sql-type">TEXT</span> <span class="sql-kw">NOT NULL</span>
+);
+
+<span class="sql-kw">CREATE TABLE</span> game_server_install (
+  id <span class="sql-type">INTEGER</span> <span class="sql-kw">PRIMARY KEY AUTOINCREMENT</span>,
+  install_path <span class="sql-type">TEXT</span> <span class="sql-kw">NOT NULL</span>,
+  steamcmd_path <span class="sql-type">TEXT</span> <span class="sql-kw">NOT NULL</span>,
+  app_id <span class="sql-type">INTEGER</span> <span class="sql-kw">NOT NULL DEFAULT</span> 233780,
+  workshop_app_id <span class="sql-type">INTEGER</span> <span class="sql-kw">NOT NULL DEFAULT</span> 107410,
+  steam_account_id <span class="sql-type">INTEGER</span> <span class="sql-kw">NOT NULL REFERENCES</span> steam_account(id),
+  version <span class="sql-type">TEXT</span>,
+  build_id <span class="sql-type">TEXT</span>,
+  status <span class="sql-type">TEXT</span> <span class="sql-kw">NOT NULL DEFAULT</span> <span class="sql-type">'OK'</span>,
+  last_update_at <span class="sql-type">TEXT</span>,
+  created_at <span class="sql-type">TEXT</span> <span class="sql-kw">NOT NULL</span>,
+  updated_at <span class="sql-type">TEXT</span> <span class="sql-kw">NOT NULL</span>
+);
+
+<span class="sql-kw">CREATE TABLE</span> instance_schedule (
+  id <span class="sql-type">INTEGER</span> <span class="sql-kw">PRIMARY KEY AUTOINCREMENT</span>,
+  instance_id <span class="sql-type">INTEGER</span> <span class="sql-kw">NOT NULL REFERENCES</span> game_instance(id) <span class="sql-kw">ON DELETE CASCADE</span>,
+  action <span class="sql-type">TEXT</span> <span class="sql-kw">NOT NULL CHECK</span> (action <span class="sql-kw">IN</span> (<span class="sql-type">'START'</span>, <span class="sql-type">'STOP'</span>, <span class="sql-type">'RESTART'</span>)),
+  cron_expr <span class="sql-type">TEXT</span> <span class="sql-kw">NOT NULL</span>,
+  timezone <span class="sql-type">TEXT</span> <span class="sql-kw">NOT NULL DEFAULT</span> <span class="sql-type">'Asia/Shanghai'</span>,
+  enabled <span class="sql-type">INTEGER</span> <span class="sql-kw">NOT NULL DEFAULT</span> 1,
+  next_run_at <span class="sql-type">TEXT</span>,
+  last_run_at <span class="sql-type">TEXT</span>,
+  created_by <span class="sql-type">INTEGER</span> <span class="sql-kw">REFERENCES</span> sys_user(id),
+  created_at <span class="sql-type">TEXT</span> <span class="sql-kw">NOT NULL</span>,
+  updated_at <span class="sql-type">TEXT</span> <span class="sql-kw">NOT NULL</span>
+);
+
+<span class="sql-kw">CREATE TABLE</span> job_task (
+  id <span class="sql-type">INTEGER</span> <span class="sql-kw">PRIMARY KEY AUTOINCREMENT</span>,
+  job_type <span class="sql-type">TEXT</span> <span class="sql-kw">NOT NULL</span>,
+  target_type <span class="sql-type">TEXT</span>,
+  target_id <span class="sql-type">INTEGER</span>,
+  payload_json <span class="sql-type">TEXT</span>,
+  status <span class="sql-type">TEXT</span> <span class="sql-kw">NOT NULL DEFAULT</span> <span class="sql-type">'PENDING'</span>,
+  progress <span class="sql-type">INTEGER</span> <span class="sql-kw">NOT NULL DEFAULT</span> 0,
+  log_path <span class="sql-type">TEXT</span>,
+  error_message <span class="sql-type">TEXT</span>,
+  created_by <span class="sql-type">INTEGER</span> <span class="sql-kw">REFERENCES</span> sys_user(id),
+  created_at <span class="sql-type">TEXT</span> <span class="sql-kw">NOT NULL</span>,
+  started_at <span class="sql-type">TEXT</span>,
+  finished_at <span class="sql-type">TEXT</span>
+);
+
+<span class="sql-kw">CREATE TABLE</span> backup_record (
+  id <span class="sql-type">INTEGER</span> <span class="sql-kw">PRIMARY KEY AUTOINCREMENT</span>,
+  file_path <span class="sql-type">TEXT</span> <span class="sql-kw">NOT NULL</span>,
+  file_size <span class="sql-type">INTEGER</span>,
+  checksum <span class="sql-type">TEXT</span>,
+  status <span class="sql-type">TEXT</span> <span class="sql-kw">NOT NULL DEFAULT</span> <span class="sql-type">'SUCCESS'</span>,
+  created_by <span class="sql-type">INTEGER</span> <span class="sql-kw">REFERENCES</span> sys_user(id),
+  created_at <span class="sql-type">TEXT</span> <span class="sql-kw">NOT NULL</span>
+);
+
+<span class="sql-kw">CREATE INDEX</span> idx_job_status <span class="sql-kw">ON</span> job_task(status, created_at);
+<span class="sql-kw">CREATE INDEX</span> idx_instance_mod_inst <span class="sql-kw">ON</span> instance_mod(instance_id, enabled, load_order);
+<span class="sql-kw">CREATE INDEX</span> idx_schedule_inst <span class="sql-kw">ON</span> instance_schedule(instance_id, enabled);
+<span class="sql-kw">CREATE INDEX</span> idx_audit_created <span class="sql-kw">ON</span> audit_log(created_at);</code></pre>
+      </section>
+
+      <!-- 7 -->
+      <section class="section" id="flows">
+        <h2>7. 核心流程</h2>
+        <p class="sub">关键业务路径</p>
+
+        <h3>7.1 启动一个实例（手动 / 定时）</h3>
+        <ol>
+          <li>权限校验 <code>can_start_stop</code>（定时触发时跳过用户权限，记 <code>trigger_type=schedule</code>）。</li>
+          <li>读取结构化字段（端口、profile、地图、mod/serverMod 列表）+ <code>extra_args</code>，组装启动命令：
+            <br /><code>arma3server_x64.exe -config=... -port=... -profiles=... -mod=&lt;BOTH&gt; -serverMod=&lt;SERVER_ONLY&gt; &lt;extra_args&gt;</code></li>
+          <li>生成 <code>server_runtime</code>，创建 <code>job_task(SERVER_START)</code>。</li>
+          <li>启动进程，绑定日志；状态 <code>STARTING → RUNNING</code>。</li>
+          <li>WebSocket 推送；失败则 <code>ERROR</code> 并保留日志。</li>
+        </ol>
+
+        <h3>7.2 SteamCMD 更新本体 / 下载 Workshop 模组</h3>
+        <ol>
+          <li>使用 <strong>真实 Steam 账号</strong>（加密凭据）登录；匿名不可用。</li>
+          <li>本体：<code>+app_update 233780 validate</code>；模组：<code>+workshop_download_item 107410 &lt;id&gt;</code>。</li>
+          <li>检查占用策略（有实例运行时禁止更新本体 / 警告继续）。</li>
+          <li>解析进度 → <code>job_task</code>；更新 <code>game_server_install</code> / <code>mod_catalog</code> 状态。</li>
+          <li>Workshop 下载完成后链接/迁移到 <code>storage/mods</code>，供多实例复用。</li>
+        </ol>
+
+        <h3>7.3 模组管理与双端区分</h3>
+        <ol>
+          <li>录入 Workshop ID → 自动创建 <code>mod_catalog</code> 并触发下载任务。</li>
+          <li>绑定实例时选择 <code>load_type</code>：<code>SERVER_ONLY</code> → <code>-serverMod</code>；<code>BOTH</code> → <code>-mod</code>。</li>
+          <li>更新/删除模组走任务队列；删除时检查是否被实例引用。</li>
+        </ol>
+
+        <h3>7.4 RCON 与定时计划</h3>
+        <ol>
+          <li>RCON：连接实例 RCON → 玩家列表 / 踢人 / 广播；权限 <code>can_rcon</code>；全量审计。</li>
+          <li>定时：编辑 <code>instance_schedule</code>（cron + 时区）；调度器到点入队启停任务，与手动同管道。</li>
+          <li>项目备份：导出 SQLite + 配置元数据到 <code>storage/backups</code>（不含游戏本体）。</li>
+        </ol>
+
+        <h3>7.5 PowerShell 任务</h3>
+        <ol>
+          <li>选择实例上下文 → 运行受控脚本模板（非自由 shell，防注入）。</li>
+          <li>任务中心展示实时输出；可取消。</li>
+          <li>所有执行写审计（谁、何时、何实例、何命令模板）。</li>
+        </ol>
+      </section>
+
+      <!-- 8 -->
+      <section class="section" id="api">
+        <h2>8. 接口设计概要</h2>
+        <p class="sub">REST 前缀建议 <code>/api/v1</code>；WebSocket <code>/ws/events</code></p>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>域</th><th>方法与路径（示例）</th><th>说明</th></tr></thead>
+            <tbody>
+              <tr><td>认证</td><td><code>POST /auth/login</code> · <code>POST /auth/refresh</code> · <code>POST /auth/logout</code></td><td>JWT</td></tr>
+              <tr><td>用户</td><td><code>GET/POST /users</code> · <code>PUT /users/{id}</code> · <code>PUT /users/{id}/roles</code></td><td>管理员</td></tr>
+              <tr><td>实例</td><td><code>GET/POST /instances</code> · <code>PUT /instances/{id}</code> · <code>POST /instances/{id}/start|stop</code></td><td>ACL 校验</td></tr>
+              <tr><td>实例权限</td><td><code>GET/PUT /instances/{id}/permissions</code></td><td>授予用户权限位</td></tr>
+              <tr><td>地图 PBO</td><td><code>GET/POST /maps</code> · <code>DELETE /maps/{id}</code> · <code>POST /instances/{id}/maps</code></td><td>multipart 上传 .pbo</td></tr>
+              <tr><td>模组 Workshop</td><td><code>GET/POST /mods</code> · <code>POST /mods/{id}/download</code> · <code>POST /instances/{id}/mods</code></td><td>含 load_type</td></tr>
+              <tr><td>本体 / Steam</td><td><code>GET /system/install</code> · <code>POST /system/install/update</code> · <code>PUT /system/steam-account</code></td><td>真实账号加密存储</td></tr>
+              <tr><td>RCON</td><td><code>GET /instances/{id}/players</code> · <code>POST /instances/{id}/kick</code> · <code>POST /instances/{id}/broadcast</code></td><td><code>can_rcon</code></td></tr>
+              <tr><td>定时计划</td><td><code>GET/POST /instances/{id}/schedules</code> · <code>PATCH /schedules/{id}</code></td><td><code>can_schedule</code></td></tr>
+              <tr><td>任务</td><td><code>GET /jobs</code> · <code>GET /jobs/{id}/log</code> · <code>POST /jobs/{id}/cancel</code></td><td></td></tr>
+              <tr><td>设置/审计/备份</td><td><code>GET/PUT /system/settings</code> · <code>GET /audit</code> · <code>POST /system/backup</code></td><td>项目数据备份</td></tr>
+              <tr><td>实时</td><td><code>WS /ws/events?token=...</code></td><td>任务进度、日志、实例状态</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="callout ok">
+          <strong>约定：</strong>错误返回统一结构 <code>{ code, message, detail }</code>；分页 <code>{ items, total, page, size }</code>；
+          所有写接口记 <code>audit_log</code>。
+        </div>
+      </section>
+
+      <!-- 9 -->
+      <section class="section" id="dir">
+        <h2>9. 工程目录建议</h2>
+        <p class="sub">单仓 monorepo 或前后端分仓均可</p>
+        <pre><code>aram3-controller/
+├─ backend/
+│  ├─ src/main/java/.../
+│  │  ├─ config/          # Security, WebSocket, SQLite, Path
+│  │  ├─ domain/          # entity
+│  │  ├─ repository/
+│  │  ├─ service/         # Instance/Mod/Map/Job/SteamCmd/Process
+│  │  ├─ web/             # controller + dto
+│  │  └─ infra/process/   # PowerShell, SteamCmd runners
+│  ├─ src/main/resources/
+│  │  ├─ application.yml
+│  │  └─ db/migration/    # schema.sql / Flyway
+│  └─ pom.xml
+├─ frontend/
+│  ├─ src/
+│  │  ├─ api/
+│  │  ├─ views/           # login, instances, maps, mods, jobs, admin
+│  │  ├─ components/
+│  │  ├─ stores/          # pinia: auth, instance, job
+│  │  └─ router/
+│  └─ package.json
+├─ docs/                  # 本计划书、接口文档
+└─ scripts/               # 安装服务、备份、探测 PS</code></pre>
+      </section>
+
+      <!-- 10 -->
+      <section class="section" id="plan">
+        <h2>10. 实施计划</h2>
+        <p class="sub">建议里程碑（可按人力压缩）</p>
+        <ol class="timeline">
+          <li>
+            <span class="when">M1 · 基建</span>
+            <h4>工程骨架 + 登录鉴权 + 用户/角色</h4>
+            <p>Spring Boot 4 工程、SQLite 迁移、JWT、Vue 布局壳、用户管理页。</p>
+          </li>
+          <li>
+            <span class="when">M2 · 实例</span>
+            <h4>实例 CRUD + 启停 + 日志</h4>
+            <p>目录约定、启动命令模板、进程管理、任务中心雏形、实例 ACL。</p>
+          </li>
+          <li>
+            <span class="when">M3 · 资产</span>
+            <h4>PBO 地图 + Workshop 模组</h4>
+            <p>PBO 上传下载；Workshop ID 下载/更新；load_type 区分；实例绑定。</p>
+          </li>
+          <li>
+            <span class="when">M4 · 系统</span>
+            <h4>SteamCMD 真实账号 + RCON + 定时启停</h4>
+            <p>凭据加密、AppID 233780、Workshop 下载、RCON 踢人/广播、cron 计划、PS 7/5。</p>
+          </li>
+          <li>
+            <span class="when">M5 · 打磨</span>
+            <h4>人机工效 / 备份 / 可选仪表盘</h4>
+            <p>WebSocket、项目数据备份、二次确认、错误态；仪表盘可选。</p>
+          </li>
+        </ol>
+      </section>
+
+      <!-- 11 -->
+      <section class="section" id="risk">
+        <h2>11. 风险与约束</h2>
+        <ul>
+          <li><strong>Steam 真实账号安全：</strong>密码/令牌必须加密（DPAPI/AES）；禁止明文日志；建议专用小号；Steam Guard 令牌需可轮换。</li>
+          <li><strong>Workshop 与本体 AppID：</strong>本体 233780；创意工件通常走 107410。下载失败需账号权限/地区/订阅可见性排查。</li>
+          <li><strong>Windows 进程与文件锁：</strong>更新本体或覆盖模组时若服务器占用文件会失败；需要停止实例或维护窗口。</li>
+          <li><strong>PowerShell 执行策略：</strong>部分机器 Restricted；优先 <code>pwsh -NoProfile</code> / <code>-Command</code>，避免依赖脚本执行策略。</li>
+          <li><strong>SQLite 并发：</strong>开启 WAL；写操作串行化关键任务；避免多进程狂写。</li>
+          <li><strong>路径穿越：</strong>文件名/路径由服务端白名单映射，拒绝 <code>..</code> 与绝对路径注入。</li>
+          <li><strong>大文件 PBO 上传：</strong>分片或限流、校验磁盘空间、上传完再入库。</li>
+          <li><strong>RCON 协议差异：</strong>BattlEye RCON 与其它实现细节不同；踢人/广播需适配并做超时与重连。</li>
+          <li><strong>定时启停冲突：</strong>计划与手动并发时用实例级锁；失败要告警而不是静默。</li>
+          <li><strong>Spring Boot 4 兼容：</strong>确认 starter/驱动与 Boot 4 / Jakarta 兼容矩阵。</li>
+          <li><strong>权限误配：</strong>高危位（RCON、启停、本体更新、Steam 账号）默认关闭。</li>
+        </ul>
+      </section>
+
+      <!-- 12 -->
+      <section class="section" id="questions">
+        <h2>12. 已确认决策与遗留项</h2>
+        <p class="sub">v0.2 根据业务方答复定稿；遗留项不阻塞骨架开发</p>
+
+        <h3>12.1 已确认（2026-10-08）</h3>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>#</th><th>议题</th><th>结论</th></tr></thead>
+            <tbody>
+              <tr><td>1</td><td>游戏核心 / 下载</td><td>Arma 3 Dedicated Server，AppID <code>233780</code>；SteamCMD <strong>真实账号</strong>登录，匿名不可用</td></tr>
+              <tr><td>2</td><td>地图</td><td><strong>PBO 文件</strong>上传 / 下载 / 绑定实例</td></tr>
+              <tr><td>3</td><td>模组</td><td><strong>全部 Workshop 自动下载</strong>（不做本地包安装）</td></tr>
+              <tr><td>4</td><td>启动命令</td><td><strong>结构化字段 + 附加参数</strong>（非自由文本一整行）</td></tr>
+              <tr><td>5</td><td>运维控制</td><td>需要 <strong>RCON</strong>：踢人、广播</td></tr>
+              <tr><td>6</td><td>启停方式</td><td>手动启停 + <strong>定时启停</strong>；部署仅由本项目进程控制</td></tr>
+              <tr><td>7</td><td>备份</td><td><strong>只备份项目数据</strong>（SQLite + 配置元数据）；不备份游戏服务器本体</td></tr>
+              <tr><td>8</td><td>界面</td><td>仪表盘<strong>可选</strong>，非必须</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>12.2 遗留细化项（可开发中再定）</h3>
+        <ul class="q-list">
+          <li>
+            <div class="num">A</div>
+            <div>
+              <strong>Steam Guard / 令牌策略</strong>
+              <span>账号是否开启手机令牌？若开启，需支持手动刷新令牌或专用无 Guard 小号。</span>
+            </div>
+          </li>
+          <li>
+            <div class="num">B</div>
+            <div>
+              <strong>RCON 协议实现</strong>
+              <span>默认按 BattlEye RCON；若使用其他 RCON 网关/插件，需确认报文格式。</span>
+            </div>
+          </li>
+          <li>
+            <div class="num">C</div>
+            <div>
+              <strong>Workshop 下载落盘策略</strong>
+              <span>是否允许同一 Workshop 物理文件被多实例硬链接复用以省磁盘。</span>
+            </div>
+          </li>
+          <li>
+            <div class="num">D</div>
+            <div>
+              <strong>Web 暴露与鉴权加固</strong>
+              <span>仅局域网还是公网？HTTPS/反代？登录失败锁定策略。</span>
+            </div>
+          </li>
+        </ul>
+
+        <div class="footer-note">
+          <strong>状态：</strong>方案基线（权限模型 + 表结构 + 流程）已可开工。
+          下一步可选：
+          （1）OpenAPI 接口稿；
+          （2）Spring Boot 4 + Vue3 工程骨架；
+          （3）SQLite 迁移 SQL 与种子数据；
+          （4）启动命令字段与生成器的详细规范。
+        </div>
+      </section>
+    </main>
+  </div>
+  <script src="app.js"></script>
+</body>
+</html>

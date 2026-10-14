@@ -1,0 +1,15 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="Aram3Application" type="SpringBootApplicationConfigurationType" factoryName="Spring Boot">
+    <option name="ACTIVE_PROFILES" value="" />
+    <module name="backend" />
+    <option name="SPRING_BOOT_MAIN_CLASS" value="com.aram3.Aram3Application" />
+    <option name="ALTERNATIVE_JRE_PATH" />
+    <option name="OPEN_IN_BROWSER" value="http://127.0.0.1:8080" />
+    <option name="SPRING_BOOT_USE_PATH" value="true" />
+    <option name="SPRING_BOOT_MODULE_PATH" value="" />
+    <option name="SPRING_BOOT_CLASSPATH" value="" />
+    <method v="2">
+      <option name="Make" enabled="true" />
+    </method>
+  </configuration>
+</component>

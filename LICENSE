@@ -1,0 +1,61 @@
+Aram3 Web Server Controller — Non-Commercial License
+Version 1.0 (2026)
+
+Copyright (c) 2026 The Aram3 Web Server Controller contributors (the "Licensor").
+All rights reserved.
+
+1. Definitions
+   "Software" means this repository and all source code, documentation, and related materials.
+   "Commercial Use" means any use that is primarily intended for or directed toward commercial
+   advantage or monetary compensation, including but not limited to: selling or sublicensing the
+   Software; offering paid products, SaaS, hosting, or consulting that includes the Software;
+   using the Software to operate revenue-generating services; or incorporating the Software into
+   a commercial product offering.
+   "Non-Commercial Use" means personal, educational, academic research, evaluation, and
+   not-for-profit organizational use that is not Commercial Use.
+
+2. Grant
+   Subject to the terms below, the Licensor grants you a worldwide, royalty-free, non-exclusive,
+   non-transferable license to use, copy, modify, merge, publish, and distribute the Software
+   for Non-Commercial Use only.
+
+3. Non-Commercial restriction
+   You may NOT exercise any rights granted above for Commercial Use without prior written
+   permission from the Licensor. Third-party commercial use is prohibited.
+
+4. Contributions
+   By contributing, you agree that your contributions are licensed under these same terms and
+   that you have the right to license them.
+
+5. Notices
+   Retain this license text and copyright notice in all copies or substantial portions of the
+   Software. Modified versions must be clearly marked as modified and must not be represented
+   as the official unmodified Software.
+
+6. No trademark rights
+   This license does not grant permission to use trade names, trademarks, service marks, or
+   product names of the Licensor, except as required for reasonable and customary use in
+   describing the origin of the Software.
+
+7. Disclaimer of Warranty
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING
+   BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+   NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
+   DAMAGES OR OTHER LIABILITY ARISING FROM, OUT OF, OR IN CONNECTION WITH THE SOFTWARE OR THE USE
+   OR OTHER DEALINGS IN THE SOFTWARE.
+
+8. Termination
+   This license terminates automatically if you breach it. Upon termination you must cease all
+   use and distribution of the Software.
+
+9. Governing language
+   This license is provided in English. If a Chinese translation is published for convenience,
+   the English text controls in case of conflict.
+
+---
+
+中文说明（仅供参考，以英文全文为准）：
+
+本软件禁止第三方商用。允许个人、学习、科研、评估等非商业用途的使用、修改与非商业分发；
+任何售卖、收费 SaaS/托管、作为商业产品一部分、或以本软件开展盈利服务等，须事先取得版权方书面授权。
+保留本协议与版权声明；免责声明与终止条款见上文英文全文。

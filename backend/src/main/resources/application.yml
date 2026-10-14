@@ -1,0 +1,51 @@
+spring:
+  application:
+    name: aram3-controller
+  datasource:
+    url: jdbc:sqlite:${ARAM3_DATA_DIR:./data}/aram3.db
+    driver-class-name: org.sqlite.JDBC
+    hikari:
+      maximum-pool-size: 4
+      connection-init-sql: PRAGMA journal_mode=WAL; PRAGMA foreign_keys=ON;
+  sql:
+    init:
+      mode: always
+      schema-locations: classpath:schema.sql
+      continue-on-error: true
+  servlet:
+    multipart:
+      max-file-size: 4GB
+      max-request-size: 4GB
+  jackson:
+    time-zone: Asia/Shanghai
+    date-format: yyyy-MM-dd'T'HH:mm:ss
+
+server:
+  port: 8080
+  forward-headers-strategy: framework
+  error:
+    include-message: always
+
+aram3:
+  jwt:
+    secret: ${ARAM3_JWT_SECRET:change-me-aram3-jwt-secret-please-32bytes!!}
+    access-ttl-minutes: 60
+    refresh-ttl-days: 7
+  paths:
+    data-dir: ${ARAM3_DATA_DIR:./data}
+    game-server-dir: ${ARAM3_GAME_DIR:./data/game-server}
+    steamcmd-path: ${ARAM3_STEAMCMD:./data/steamcmd/steamcmd.exe}
+    workshop-dir: ${ARAM3_WORKSHOP_DIR:./data/workshop}
+    storage-dir: ${ARAM3_STORAGE_DIR:./data/storage}
+    instances-dir: ${ARAM3_INSTANCES_DIR:./data/instances}
+    logs-dir: ${ARAM3_LOGS_DIR:./data/logs}
+  steam:
+    app-id: 233780
+    workshop-app-id: 107410
+  process:
+    ps-prefer-pwsh: true
+
+logging:
+  level:
+    com.aram3: INFO
+    org.springframework.jdbc: WARN
