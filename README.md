@@ -96,16 +96,6 @@ npm run dev
 
 英文说明见 [README.en.md](README.en.md)。
 
-## 上架 GitHub 前检查（隐私）
-
-请勿提交：
-
-- `data/`（SQLite、`server.cfg`、RCON 相关）
-- `*.log`（可能含 Steam 账号 / SteamID）
-- 本机绝对路径、真实公网 IP、Steam 账号、令牌、RCON 密码
-
-生产环境必须设置：`ARAM3_JWT_SECRET`。
-
 ## 版本说明
 
 - Java 21，Spring Boot 3.5.x 为可编译基线
