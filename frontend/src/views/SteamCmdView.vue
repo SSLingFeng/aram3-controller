@@ -1,10 +1,10 @@
 <template>
   <div class="page">
     <div class="page-header">
-      <h2>SteamCMD 控制台</h2>
+      <h2>{{ $t('steamcmd.title') }}</h2>
       <div>
-        <el-button type="danger" :disabled="!canCommand" @click="stopSession">停止更新</el-button>
-        <el-button @click="refresh">刷新</el-button>
+        <el-button type="danger" :disabled="!canCommand" @click="stopSession">{{ $t('steamcmd.stopUpdate') }}</el-button>
+        <el-button @click="refresh">{{ $t('common.refresh') }}</el-button>
       </div>
     </div>
 
@@ -13,32 +13,32 @@
       type="warning"
       :closable="false"
       style="margin-bottom:12px"
-      title="SteamCMD 启动中… 进程创建后会持续输出日志，请稍候（SteamCMD 自身启动可能较慢）。"
+      :title="$t('steamcmd.alertStarting')"
     />
     <el-alert
       v-else-if="status === 'RUNNING'"
       type="success"
       :closable="false"
       style="margin-bottom:12px"
-      title="SteamCMD 运行中。可发送指令；点击「停止更新」可结束进程。"
+      :title="$t('steamcmd.alertRunning')"
     />
     <el-alert
       v-else
       type="info"
       :closable="false"
       style="margin-bottom:12px"
-      title="SteamCMD 已结束，指令输入已锁定。下方可查看完整日志与结束后的本地检测结果。"
+      :title="$t('steamcmd.alertStopped')"
     />
 
     <el-descriptions :column="3" border size="small" style="margin-bottom:12px">
-      <el-descriptions-item label="会话">{{ sessionId }}</el-descriptions-item>
-      <el-descriptions-item label="状态">
-        <el-tag :type="statusTag">{{ status }}</el-tag>
+      <el-descriptions-item :label="$t('steamcmd.session')">{{ sessionId }}</el-descriptions-item>
+      <el-descriptions-item :label="$t('common.status')">
+        <el-tag :type="statusTag">{{ $t('steamcmd.status.' + status) }}</el-tag>
       </el-descriptions-item>
-      <el-descriptions-item label="PID">{{ pid || '—' }}</el-descriptions-item>
-      <el-descriptions-item label="模式">{{ mode }}</el-descriptions-item>
-      <el-descriptions-item label="账号">{{ username || '—' }}</el-descriptions-item>
-      <el-descriptions-item label="日志行">{{ nextSeq }}</el-descriptions-item>
+      <el-descriptions-item :label="$t('steamcmd.pid')">{{ pid || '—' }}</el-descriptions-item>
+      <el-descriptions-item :label="$t('steamcmd.mode')">{{ $t('steamcmd.modes.' + mode) }}</el-descriptions-item>
+      <el-descriptions-item :label="$t('steamcmd.account')">{{ username || '—' }}</el-descriptions-item>
+      <el-descriptions-item :label="$t('steamcmd.logLines')">{{ nextSeq }}</el-descriptions-item>
     </el-descriptions>
 
     <div ref="logBox" class="log-box">
@@ -49,10 +49,10 @@
       <el-input
         v-model="command"
         :disabled="!canCommand"
-        :placeholder="canCommand ? '输入 SteamCMD 指令，例如 status / quit' : 'SteamCMD 未运行，输入已锁定'"
+        :placeholder="canCommand ? $t('steamcmd.inputPlaceholder') : $t('steamcmd.inputLocked')"
         @keyup.enter="sendCommand"
       />
-      <el-button type="primary" :disabled="!canCommand || !command.trim()" @click="sendCommand">发送指令</el-button>
+      <el-button type="primary" :disabled="!canCommand || !command.trim()" @click="sendCommand">{{ $t('steamcmd.sendCommand') }}</el-button>
     </div>
   </div>
 </template>
@@ -60,9 +60,11 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref, nextTick } from 'vue'
 import { useRoute } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import client from '../api/http'
 
+const { t } = useI18n({ useScope: 'global' })
 const route = useRoute()
 const sessionId = computed(() => route.params.sessionId || route.query.sessionId || '')
 
@@ -143,7 +145,7 @@ async function poll() {
 
 async function sendCommand() {
   if (!canCommand.value) {
-    ElMessage.warning('SteamCMD 未运行，输入已锁定')
+    ElMessage.warning(t('steamcmd.inputLocked'))
     return
   }
   const cmd = command.value.trim()
@@ -159,10 +161,10 @@ async function sendCommand() {
 }
 
 async function stopSession() {
-  await ElMessageBox.confirm('确认停止 SteamCMD？', '停止更新', { type: 'warning' })
+  await ElMessageBox.confirm(t('steamcmd.confirmStop'), t('steamcmd.stopUpdate'), { type: 'warning' })
   try {
     await client.post(`/steamcmd/sessions/${sessionId.value}/stop`)
-    ElMessage.success('已请求停止')
+    ElMessage.success(t('steamcmd.stopRequested'))
     await poll()
   } catch (e) {
     ElMessage.error(e.message)

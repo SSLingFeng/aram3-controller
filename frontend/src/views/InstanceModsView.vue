@@ -1,27 +1,27 @@
 <template>
   <div class="page">
     <div class="page-header">
-      <h2>实例模组加载配置</h2>
-      <el-button type="primary" :loading="saving" :disabled="!instanceId" @click="save">保存当前实例配置</el-button>
+      <h2>{{ $t('instanceMods.title') }}</h2>
+      <el-button type="primary" :loading="saving" :disabled="!instanceId" @click="save">{{ $t('instanceMods.saveInstanceConfig') }}</el-button>
     </div>
 
     <el-form inline>
-      <el-form-item label="实例">
-        <el-select v-model="instanceId" placeholder="选择实例" style="width:220px" @change="loadSelection">
+      <el-form-item :label="$t('instanceMods.instance')">
+        <el-select v-model="instanceId" :placeholder="$t('instanceMods.selectInstance')" style="width:220px" @change="loadSelection">
           <el-option v-for="i in instances" :key="i.id" :label="`${i.name} (${i.code})`" :value="i.id" />
         </el-select>
       </el-form-item>
-      <el-form-item label="搜索">
-        <el-input v-model="keyword" placeholder="名称 / Workshop ID" clearable style="width:200px" />
+      <el-form-item :label="$t('common.search')">
+        <el-input v-model="keyword" :placeholder="$t('instanceMods.searchPlaceholder')" clearable style="width:200px" />
       </el-form-item>
     </el-form>
 
     <el-alert type="info" :closable="false" style="margin-bottom:12px"
-      title="同一模组只能选择「双端加载」或「仅服务端」之一。点击表头复选框可全选/全不选该列。双端 → -mod；仅服务端 → -serverMod。" />
+      :title="$t('instanceMods.loadTip')" />
 
     <el-table :data="filtered" border stripe>
-      <el-table-column prop="name" label="模组名称" min-width="220" />
-      <el-table-column prop="workshopId" label="Workshop ID" width="130" />
+      <el-table-column prop="name" :label="$t('instanceMods.modName')" min-width="220" />
+      <el-table-column prop="workshopId" :label="$t('instanceMods.workshopId')" width="130" />
       <el-table-column width="120" align="center">
         <template #header>
           <el-checkbox
@@ -29,7 +29,7 @@
             :indeterminate="someBoth && !allBoth"
             @change="toggleAllBoth"
           >
-            双端加载
+            {{ $t('instanceMods.bothLoad') }}
           </el-checkbox>
         </template>
         <template #default="{ row }">
@@ -43,7 +43,7 @@
             :indeterminate="someServer && !allServer"
             @change="toggleAllServer"
           >
-            仅服务端
+            {{ $t('instanceMods.serverOnlyLoad') }}
           </el-checkbox>
         </template>
         <template #default="{ row }">
@@ -53,7 +53,7 @@
     </el-table>
 
     <div class="summary muted" style="margin-top:12px">
-      已选双端 {{ countBoth }} 个 · 仅服务端 {{ countServer }} 个 · 未选 {{ countNone }} 个
+      {{ $t('instanceMods.summary', { both: countBoth, server: countServer, none: countNone }) }}
     </div>
   </div>
 </template>
@@ -61,7 +61,10 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import { ElMessage } from 'element-plus'
+import { useI18n } from 'vue-i18n'
 import client from '../api/http'
+
+const { t } = useI18n({ useScope: 'global' })
 
 const instances = ref([])
 const mods = ref([])
@@ -134,9 +137,9 @@ async function loadSelection() {
     const map = new Map()
     bound.forEach(b => map.set(b.modId, b.loadType))
     rows.value.forEach(r => {
-      const t = map.get(r.id)
-      r.both = t === 'BOTH'
-      r.serverOnly = t === 'SERVER_ONLY'
+      const loadType = map.get(r.id)
+      r.both = loadType === 'BOTH'
+      r.serverOnly = loadType === 'SERVER_ONLY'
     })
   } catch (e) {
     ElMessage.error(e.message)
@@ -155,7 +158,7 @@ async function save() {
         loadOrder: idx
       }))
     await client.put(`/instances/${instanceId.value}/mods/load-list`, { items })
-    ElMessage.success('已保存实例模组加载列表')
+    ElMessage.success(t('instanceMods.saveSuccess'))
   } catch (e) {
     ElMessage.error(e.message)
   } finally {

@@ -1,0 +1,21 @@
+export default {
+  title: 'Управление картами (mpmissions / PBO)',
+  uploadPbo: 'Загрузить PBO',
+  storageTip: 'Файлы карт постоянно хранятся в каталоге \\mpmissions корня игрового сервера. Map Key автоматически берётся из имени файла (без расширения .pbo).',
+  mapKey: 'Map Key',
+  file: 'Файл',
+  size: 'Размер',
+  sha256: 'SHA-256',
+  uploadDialogTitle: 'Загрузка PBO карты',
+  mapName: 'Название карты',
+  selectFile: 'Выбор файла',
+  namePlaceholder: 'Необязательно; если не указано, используется имя файла',
+  mapKeyPlaceholder: 'Заполняется автоматически после выбора файла (без расширения)',
+  uploadDragPrefix: 'Перетащите файл .pbo сюда или ',
+  uploadClickToSelect: 'выберите файл',
+  uploadTip: 'Поддерживается только .pbo; Map Key = имя файла без расширения',
+  upload: 'Загрузить',
+  onlyPbo: 'Поддерживаются только файлы .pbo',
+  selectPboFirst: 'Выберите файл .pbo',
+  uploadSuccess: 'Файл успешно загружен'
+}

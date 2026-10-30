@@ -1,80 +1,80 @@
 <template>
   <div class="page">
     <div class="page-header">
-      <h2>实例管理</h2>
-      <el-button type="primary" @click="openCreate">新建实例</el-button>
+      <h2>{{ $t('instances.title') }}</h2>
+      <el-button type="primary" @click="openCreate">{{ $t('instances.createBtn') }}</el-button>
     </div>
 
     <el-table :data="instances" border stripe>
-      <el-table-column prop="code" label="Code" width="110" />
-      <el-table-column prop="name" label="名称" min-width="120" />
-      <el-table-column prop="status" label="状态" width="100">
+      <el-table-column prop="code" :label="$t('instances.columns.code')" width="110" />
+      <el-table-column prop="name" :label="$t('common.name')" min-width="120" />
+      <el-table-column prop="status" :label="$t('common.status')" width="100">
         <template #default="{ row }">
           <el-tag :type="statusType(row.status)">{{ row.status }}</el-tag>
         </template>
       </el-table-column>
-      <el-table-column label="端口" width="170">
+      <el-table-column :label="$t('instances.columns.port')" width="170">
         <template #default="{ row }">
           <span class="muted">{{ row.gamePort || '-' }} / q{{ row.steamQueryPort || '-' }} / r{{ row.rconPort || '-' }}</span>
         </template>
       </el-table-column>
-      <el-table-column prop="bindIp" label="IP" width="130">
+      <el-table-column prop="bindIp" :label="$t('instances.columns.ip')" width="130">
         <template #default="{ row }">
           <span class="muted">{{ row.bindIp || '—' }}</span>
         </template>
       </el-table-column>
-      <el-table-column label="操作" width="380">
+      <el-table-column :label="$t('common.action')" width="380">
         <template #default="{ row }">
-          <el-button size="small" type="primary" plain @click="openControl(row)">控制台</el-button>
-          <el-button size="small" @click="openEdit(row)">编辑</el-button>
-          <el-button size="small" type="success" @click="start(row)">启动</el-button>
-          <el-button size="small" type="warning" @click="stop(row)">停止</el-button>
-          <el-button size="small" type="danger" @click="remove(row)">删除</el-button>
+          <el-button size="small" type="primary" plain @click="openControl(row)">{{ $t('instances.actions.console') }}</el-button>
+          <el-button size="small" @click="openEdit(row)">{{ $t('common.edit') }}</el-button>
+          <el-button size="small" type="success" @click="start(row)">{{ $t('instances.actions.start') }}</el-button>
+          <el-button size="small" type="warning" @click="stop(row)">{{ $t('instances.actions.stop') }}</el-button>
+          <el-button size="small" type="danger" @click="remove(row)">{{ $t('common.delete') }}</el-button>
         </template>
       </el-table-column>
     </el-table>
 
     <!-- 新建 / 编辑 -->
-    <el-dialog v-model="dialogVisible" :title="isEdit ? '编辑实例' : '新建实例'" width="620px">
+    <el-dialog v-model="dialogVisible" :title="isEdit ? $t('instances.editTitle') : $t('instances.createTitle')" width="620px">
       <el-form :model="form" label-width="130px">
-        <el-form-item label="Code" required>
-          <el-input v-model="form.code" :disabled="isEdit" placeholder="如 main-ops" />
+        <el-form-item :label="$t('instances.form.code')" required>
+          <el-input v-model="form.code" :disabled="isEdit" :placeholder="$t('instances.form.codePlaceholder')" />
         </el-form-item>
-        <el-form-item label="名称" required>
+        <el-form-item :label="$t('common.name')" required>
           <el-input v-model="form.name" />
         </el-form-item>
-        <el-form-item label="绑定 IP">
-          <el-input v-model="form.bindIp" placeholder="非必填，如 192.0.2.1；不填则不加 -ip" />
+        <el-form-item :label="$t('instances.form.bindIp')">
+          <el-input v-model="form.bindIp" :placeholder="$t('instances.form.bindIpPlaceholder')" />
         </el-form-item>
-        <el-form-item label="游戏端口">
+        <el-form-item :label="$t('instances.form.gamePort')">
           <el-input-number v-model="form.gamePort" :min="1" :max="65535" />
-          <span class="muted" style="margin-left:8px">-port=</span>
+          <span class="muted" style="margin-left:8px">{{ $t('instances.form.portFlag') }}</span>
         </el-form-item>
-        <el-form-item label="查询端口">
+        <el-form-item :label="$t('instances.form.queryPort')">
           <el-input-number v-model="form.steamQueryPort" :min="1" :max="65535" />
         </el-form-item>
-        <el-form-item label="RCON 端口">
+        <el-form-item :label="$t('instances.form.rconPort')">
           <el-input-number v-model="form.rconPort" :min="1" :max="65535" />
         </el-form-item>
-        <el-form-item label="RCON 密码">
+        <el-form-item :label="$t('instances.form.rconPassword')">
           <el-input v-model="form.rconPassword" type="password" show-password />
         </el-form-item>
-        <el-form-item label="Profile 名">
-          <el-input v-model="form.profileName" placeholder="-name= ；可选" />
+        <el-form-item :label="$t('instances.form.profileName')">
+          <el-input v-model="form.profileName" :placeholder="$t('instances.form.profileNamePlaceholder')" />
         </el-form-item>
-        <el-form-item label="自定义启动参数">
+        <el-form-item :label="$t('instances.form.extraArgs')">
           <el-input
             v-model="form.extraArgs"
             type="textarea"
             :rows="3"
-            placeholder="追加到命令行，例如：-filepatching -bandwidthalg=2 -loadmissiontomemory -cpucount=6 -limitfps=75"
+            :placeholder="$t('instances.form.extraArgsPlaceholder')"
           />
-          <div class="muted">按空格拆分追加；-mod/-serverMod 由系统按实例模组自动生成</div>
+          <div class="muted">{{ $t('instances.form.extraArgsHint') }}</div>
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="dialogVisible = false">取消</el-button>
-        <el-button type="primary" :loading="saving" @click="save">{{ isEdit ? '保存' : '创建' }}</el-button>
+        <el-button @click="dialogVisible = false">{{ $t('common.cancel') }}</el-button>
+        <el-button type="primary" :loading="saving" @click="save">{{ isEdit ? $t('common.save') : $t('common.create') }}</el-button>
       </template>
     </el-dialog>
   </div>
@@ -83,9 +83,11 @@
 <script setup>
 import { onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { useI18n } from 'vue-i18n'
 import client from '../api/http'
 import { useRouter } from 'vue-router'
 
+const { t } = useI18n({ useScope: 'global' })
 const router = useRouter()
 
 const instances = ref([])
@@ -163,10 +165,10 @@ async function save() {
     }
     if (isEdit.value) {
       await client.put(`/instances/${form.id}`, payload)
-      ElMessage.success('已保存')
+      ElMessage.success(t('instances.msg.saved'))
     } else {
       await client.post('/instances', payload)
-      ElMessage.success('实例已创建')
+      ElMessage.success(t('instances.msg.created'))
     }
     dialogVisible.value = false
     await load()
@@ -180,7 +182,7 @@ async function save() {
 async function start(row) {
   try {
     const res = await client.post(`/instances/${row.id}/start`)
-    ElMessage.success(`已提交启动任务 #${res.jobId}`)
+    ElMessage.success(t('instances.msg.startSubmitted', { id: res.jobId }))
     await load()
   } catch (e) {
     ElMessage.error(e.message)
@@ -190,7 +192,7 @@ async function start(row) {
 async function stop(row) {
   try {
     const res = await client.post(`/instances/${row.id}/stop`)
-    ElMessage.success(`已提交停止任务 #${res.jobId}`)
+    ElMessage.success(t('instances.msg.stopSubmitted', { id: res.jobId }))
     await load()
   } catch (e) {
     ElMessage.error(e.message)
@@ -198,10 +200,10 @@ async function stop(row) {
 }
 
 async function remove(row) {
-  await ElMessageBox.confirm(`确认删除实例 ${row.name}？`, '警告', { type: 'warning' })
+  await ElMessageBox.confirm(t('common.confirmDelete', { name: row.name }), t('common.warning'), { type: 'warning' })
   try {
     await client.delete(`/instances/${row.id}`)
-    ElMessage.success('已删除')
+    ElMessage.success(t('instances.msg.deleted'))
     await load()
   } catch (e) {
     ElMessage.error(e.message)

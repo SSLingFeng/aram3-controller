@@ -1,0 +1,21 @@
+export default {
+  title: '地图管理（mpmissions / PBO）',
+  uploadPbo: '上传 PBO',
+  storageTip: '地图文件固定存放于「游戏服务器本体目录\\mpmissions」。Map Key 自动取自文件名（去掉 .pbo 后缀）。',
+  mapKey: 'Map Key',
+  file: '文件',
+  size: '大小',
+  sha256: 'SHA-256',
+  uploadDialogTitle: '上传地图 PBO',
+  mapName: '地图名称',
+  selectFile: '选择文件',
+  namePlaceholder: '非必填；不填则使用文件名',
+  mapKeyPlaceholder: '选择文件后自动填入（去后缀）',
+  uploadDragPrefix: '将 .pbo 文件拖到此处，或',
+  uploadClickToSelect: '点击选择',
+  uploadTip: '仅支持 .pbo；Map Key = 文件名去掉扩展名',
+  upload: '上传',
+  onlyPbo: '仅支持 .pbo 文件',
+  selectPboFirst: '请选择 .pbo 文件',
+  uploadSuccess: '上传成功'
+}

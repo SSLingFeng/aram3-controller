@@ -1,26 +1,29 @@
 <template>
   <div class="login-wrap">
+    <div class="lang-corner">
+      <LanguageSwitcher />
+    </div>
     <el-card class="login-card">
-      <h2>Aram3 服务器控制器</h2>
-      <p class="muted">JDK 21 · Spring Boot · Vue3 · Element Plus</p>
+      <h2>{{ $t('login.title') }}</h2>
+      <p class="muted">{{ $t('login.techStack') }}</p>
       <el-form @submit.prevent="onSubmit">
-        <el-form-item label="用户名">
-          <el-input v-model="username" placeholder="请输入用户名" autocomplete="username" />
+        <el-form-item :label="$t('common.username')">
+          <el-input v-model="username" :placeholder="$t('login.usernamePlaceholder')" autocomplete="username" />
         </el-form-item>
-        <el-form-item label="密码">
+        <el-form-item :label="$t('common.password')">
           <el-input
             v-model="password"
             type="password"
             show-password
-            placeholder="请输入密码"
+            :placeholder="$t('login.passwordPlaceholder')"
             autocomplete="current-password"
             @keyup.enter="onSubmit"
           />
         </el-form-item>
-        <el-button type="primary" :loading="loading" style="width:100%" @click="onSubmit">登录</el-button>
+        <el-button type="primary" :loading="loading" style="width:100%" @click="onSubmit">{{ $t('login.loginBtn') }}</el-button>
       </el-form>
       <p class="muted" style="margin-top:12px">
-        首次启动请在后端控制台日志中查找随机管理员账号密码。
+        {{ $t('login.firstStartTip') }}
       </p>
     </el-card>
   </div>
@@ -30,8 +33,11 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
+import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '../stores/auth'
+import LanguageSwitcher from '../components/LanguageSwitcher.vue'
 
+const { t } = useI18n({ useScope: 'global' })
 const router = useRouter()
 const auth = useAuthStore()
 const username = ref('')
@@ -40,16 +46,16 @@ const loading = ref(false)
 
 async function onSubmit() {
   if (!username.value || !password.value) {
-    ElMessage.warning('请输入用户名和密码')
+    ElMessage.warning(t('login.msg.enterUsernamePassword'))
     return
   }
   loading.value = true
   try {
     await auth.login(username.value, password.value)
-    ElMessage.success('登录成功')
+    ElMessage.success(t('login.msg.loginSuccess'))
     router.push({ name: 'instances' })
   } catch (e) {
-    ElMessage.error(e.message || '登录失败')
+    ElMessage.error(e.message || t('login.msg.loginFailed'))
   } finally {
     loading.value = false
   }
@@ -62,6 +68,19 @@ async function onSubmit() {
   display: grid;
   place-items: center;
   background: linear-gradient(135deg, #16324f, #2d4030);
+  position: relative;
+}
+.lang-corner {
+  position: absolute;
+  top: 16px;
+  right: 20px;
+}
+.lang-corner :deep(.lang-btn) {
+  color: #ffffff;
+}
+.lang-corner :deep(.lang-btn:hover) {
+  background: rgba(255, 255, 255, 0.16);
+  color: #ffffff;
 }
 .login-card {
   width: 360px;

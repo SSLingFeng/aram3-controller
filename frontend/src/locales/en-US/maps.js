@@ -1,0 +1,21 @@
+export default {
+  title: 'Map Management (mpmissions / PBO)',
+  uploadPbo: 'Upload PBO',
+  storageTip: 'Map files are always stored in the game server root directory \\mpmissions. Map Key is taken from the file name (without the .pbo extension).',
+  mapKey: 'Map Key',
+  file: 'File',
+  size: 'Size',
+  sha256: 'SHA-256',
+  uploadDialogTitle: 'Upload Map PBO',
+  mapName: 'Map Name',
+  selectFile: 'Select File',
+  namePlaceholder: 'Optional; defaults to the file name',
+  mapKeyPlaceholder: 'Auto-filled after a file is selected (extension stripped)',
+  uploadDragPrefix: 'Drop the .pbo file here, or ',
+  uploadClickToSelect: 'click to select',
+  uploadTip: 'Only .pbo is supported; Map Key = file name without extension',
+  upload: 'Upload',
+  onlyPbo: 'Only .pbo files are supported',
+  selectPboFirst: 'Please select a .pbo file',
+  uploadSuccess: 'Uploaded successfully'
+}

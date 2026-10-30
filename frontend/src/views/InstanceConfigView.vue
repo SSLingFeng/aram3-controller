@@ -1,27 +1,27 @@
 <template>
   <div class="page">
     <div class="page-header">
-      <h2>实例配置文件（server.cfg / basic.cfg）</h2>
+      <h2>{{ $t('instanceConfig.title') }}</h2>
       <div>
-        <el-button :disabled="!instanceId" @click="reset">恢复默认</el-button>
-        <el-button type="primary" :loading="saving" :disabled="!instanceId" @click="save">保存配置</el-button>
+        <el-button :disabled="!instanceId" @click="reset">{{ $t('instanceConfig.resetDefault') }}</el-button>
+        <el-button type="primary" :loading="saving" :disabled="!instanceId" @click="save">{{ $t('instanceConfig.saveConfig') }}</el-button>
       </div>
     </div>
 
     <el-form inline>
-      <el-form-item label="实例">
-        <el-select v-model="instanceId" placeholder="选择实例" style="width:240px" @change="load">
+      <el-form-item :label="$t('instanceConfig.instance')">
+        <el-select v-model="instanceId" :placeholder="$t('instanceConfig.selectInstance')" style="width:240px" @change="load">
           <el-option v-for="i in instances" :key="i.id" :label="`${i.name} (${i.code})`" :value="i.id" />
         </el-select>
       </el-form-item>
     </el-form>
 
     <el-alert type="info" :closable="false" style="margin-bottom:12px"
-      title="启动时通过 -config=<server.cfg绝对路径> -cfg=<basic.cfg绝对路径> 挂载。文件按实例独立存放，可整文件编辑。" />
+      :title="$t('instanceConfig.mountTip')" />
 
     <el-card v-if="paths.serverCfgPath" style="margin-bottom:12px">
-      <div class="muted">server.cfg：{{ paths.serverCfgPath }}</div>
-      <div class="muted">basic.cfg：{{ paths.basicCfgPath }}</div>
+      <div class="muted">{{ $t('instanceConfig.serverCfgPathLabel') }}{{ paths.serverCfgPath }}</div>
+      <div class="muted">{{ $t('instanceConfig.basicCfgPathLabel') }}{{ paths.basicCfgPath }}</div>
     </el-card>
 
     <el-tabs>
@@ -31,7 +31,7 @@
           type="textarea"
           :rows="18"
           :disabled="!instanceId"
-          placeholder="server.cfg 全文"
+          :placeholder="$t('instanceConfig.serverCfgPlaceholder')"
           style="font-family: Consolas, Monaco, monospace"
         />
       </el-tab-pane>
@@ -41,14 +41,14 @@
           type="textarea"
           :rows="18"
           :disabled="!instanceId"
-          placeholder="basic.cfg 全文"
+          :placeholder="$t('instanceConfig.basicCfgPlaceholder')"
           style="font-family: Consolas, Monaco, monospace"
         />
       </el-tab-pane>
     </el-tabs>
 
     <el-card style="margin-top:12px">
-      <template #header>启动命令预览</template>
+      <template #header>{{ $t('instanceConfig.startCommandPreview') }}</template>
       <el-input type="textarea" :rows="4" :model-value="preview" readonly />
     </el-card>
   </div>
@@ -57,7 +57,10 @@
 <script setup>
 import { onMounted, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { useI18n } from 'vue-i18n'
 import client from '../api/http'
+
+const { t } = useI18n({ useScope: 'global' })
 
 const instances = ref([])
 const instanceId = ref(null)
@@ -99,7 +102,7 @@ async function save() {
       serverCfg: serverCfg.value,
       basicCfg: basicCfg.value
     })
-    ElMessage.success('配置已保存')
+    ElMessage.success(t('instanceConfig.saveSuccess'))
     await load()
   } catch (e) {
     ElMessage.error(e.message)
@@ -109,10 +112,10 @@ async function save() {
 }
 
 async function reset() {
-  await ElMessageBox.confirm('确定恢复为默认模板？当前内容会被覆盖。', '警告', { type: 'warning' })
+  await ElMessageBox.confirm(t('instanceConfig.resetConfirm'), t('common.warning'), { type: 'warning' })
   try {
     await client.post(`/instances/${instanceId.value}/config-files/reset`)
-    ElMessage.success('已恢复默认')
+    ElMessage.success(t('instanceConfig.resetSuccess'))
     await load()
   } catch (e) {
     ElMessage.error(e.message)

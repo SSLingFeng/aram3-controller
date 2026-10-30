@@ -1,26 +1,27 @@
 <template>
   <el-container class="layout">
     <el-aside width="220px" class="aside">
-      <div class="brand">Aram3 Controller</div>
+      <div class="brand">{{ $t('layout.brand') }}</div>
       <el-menu :default-active="active" router background-color="#16324f" text-color="#dbe4ee" active-text-color="#f0b27a">
-        <el-menu-item index="/instances">实例管理</el-menu-item>
-        <el-menu-item index="/maps">地图 (mpmissions)</el-menu-item>
-        <el-menu-item index="/mods">模组库</el-menu-item>
-        <el-menu-item index="/instance-mods">实例模组配置</el-menu-item>
-        <el-menu-item index="/instance-config">实例配置文件</el-menu-item>
-        <el-menu-item index="/instance-control">实例控制台</el-menu-item>
-        <el-menu-item index="/jobs">任务中心</el-menu-item>
-        <el-menu-item index="/steamcmd">SteamCMD</el-menu-item>
-        <el-menu-item index="/users">用户管理</el-menu-item>
-        <el-menu-item index="/settings">系统设置</el-menu-item>
+        <el-menu-item index="/instances">{{ $t('layout.menu.instances') }}</el-menu-item>
+        <el-menu-item index="/maps">{{ $t('layout.menu.maps') }}</el-menu-item>
+        <el-menu-item index="/mods">{{ $t('layout.menu.mods') }}</el-menu-item>
+        <el-menu-item index="/instance-mods">{{ $t('layout.menu.instanceMods') }}</el-menu-item>
+        <el-menu-item index="/instance-config">{{ $t('layout.menu.instanceConfig') }}</el-menu-item>
+        <el-menu-item index="/instance-control">{{ $t('layout.menu.instanceControl') }}</el-menu-item>
+        <el-menu-item index="/jobs">{{ $t('layout.menu.jobs') }}</el-menu-item>
+        <el-menu-item index="/steamcmd">{{ $t('layout.menu.steamcmd') }}</el-menu-item>
+        <el-menu-item index="/users">{{ $t('layout.menu.users') }}</el-menu-item>
+        <el-menu-item index="/settings">{{ $t('layout.menu.settings') }}</el-menu-item>
       </el-menu>
     </el-aside>
     <el-container>
       <el-header class="header">
         <div class="title">{{ title }}</div>
         <div class="user">
+          <LanguageSwitcher />
           <span>{{ auth.user?.displayName || auth.user?.username }}</span>
-          <el-button link type="primary" @click="onLogout">退出</el-button>
+          <el-button link type="primary" @click="onLogout">{{ $t('layout.logout') }}</el-button>
         </div>
       </el-header>
       <el-main>
@@ -33,26 +34,33 @@
 <script setup>
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '../stores/auth'
+import LanguageSwitcher from '../components/LanguageSwitcher.vue'
 
 const route = useRoute()
 const router = useRouter()
 const auth = useAuthStore()
+const { t } = useI18n({ useScope: 'global' })
 
 const active = computed(() => route.path)
+
+const pathKeys = {
+  '/instances': 'instances',
+  '/maps': 'maps',
+  '/mods': 'mods',
+  '/instance-mods': 'instanceMods',
+  '/instance-config': 'instanceConfig',
+  '/instance-control': 'instanceControl',
+  '/jobs': 'jobs',
+  '/steamcmd': 'steamcmd',
+  '/users': 'users',
+  '/settings': 'settings'
+}
+
 const title = computed(() => {
-  const map = {
-    '/instances': '实例管理',
-    '/maps': '地图管理',
-    '/mods': '模组库',
-    '/instance-mods': '实例模组配置',
-    '/instance-config': '实例配置文件',
-    '/jobs': '任务中心',
-    '/steamcmd': 'SteamCMD 控制台',
-    '/users': '用户管理',
-    '/settings': '系统设置'
-  }
-  return map[route.path] || 'Aram3'
+  const key = pathKeys[route.path]
+  return key ? t('layout.titles.' + key) : t('layout.app')
 })
 
 function onLogout() {
