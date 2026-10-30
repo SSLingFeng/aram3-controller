@@ -16,9 +16,13 @@
           <span v-if="row.superAdmin" class="muted">/ 超管</span>
         </template>
       </el-table-column>
-      <el-table-column label="状态" width="90">
+      <el-table-column label="状态" width="150">
         <template #default="{ row }">
           <el-tag :type="row.status === 1 ? 'success' : 'info'">{{ row.status === 1 ? '启用' : '禁用' }}</el-tag>
+          <el-tag v-if="row.locked" type="danger" style="margin-left:4px">锁定</el-tag>
+          <span v-if="row.loginFailCount > 0 && !row.locked" class="muted" style="margin-left:4px">
+            失败 {{ row.loginFailCount }} 次
+          </span>
         </template>
       </el-table-column>
       <el-table-column prop="lastLoginAt" label="最近登录" min-width="150">
@@ -26,10 +30,11 @@
           <span class="muted">{{ row.lastLoginAt || '—' }}</span>
         </template>
       </el-table-column>
-      <el-table-column label="操作" width="320" fixed="right">
+      <el-table-column label="操作" width="400" fixed="right">
         <template #default="{ row }">
           <el-button size="small" @click="openEdit(row)">编辑</el-button>
           <el-button size="small" type="warning" @click="openReset(row)">改密</el-button>
+          <el-button v-if="row.locked" size="small" type="danger" @click="unlock(row)">解锁重置</el-button>
           <el-button size="small" :type="row.status === 1 ? 'info' : 'success'" @click="toggleStatus(row)">
             {{ row.status === 1 ? '禁用' : '启用' }}
           </el-button>
@@ -107,6 +112,24 @@
         <el-button type="primary" :loading="saving" @click="resetPassword">确认重置</el-button>
       </template>
     </el-dialog>
+
+    <!-- 解锁并重置密码结果 -->
+    <el-dialog v-model="unlockVisible" title="已解锁并重置密码" width="480px">
+      <el-alert type="warning" :closable="false" style="margin-bottom:12px"
+                title="新密码只显示这一次，请立即复制并线下交给用户。" />
+      <el-form label-width="100px">
+        <el-form-item label="用户名">
+          <el-input :model-value="unlockResult.username" readonly />
+        </el-form-item>
+        <el-form-item label="新密码">
+          <el-input :model-value="unlockResult.newPassword" readonly class="mono" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="copyPassword">复制密码</el-button>
+        <el-button type="primary" @click="unlockVisible = false">我已保存</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -129,6 +152,8 @@ const editForm = reactive({
   id: 0, username: '', displayName: '', email: '', superAdmin: false, roleIds: []
 })
 const resetForm = reactive({ id: 0, username: '', newPassword: '' })
+const unlockVisible = ref(false)
+const unlockResult = reactive({ username: '', newPassword: '' })
 
 async function load() {
   users.value = await client.get('/users')
@@ -205,6 +230,30 @@ async function resetPassword() {
   }
 }
 
+async function unlock(row) {
+  await ElMessageBox.confirm(
+    `解锁用户 ${row.username} 并重置为 16 位随机密码？新密码只显示一次。`,
+    '解锁并重置密码',
+    { type: 'warning' }
+  )
+  saving.value = true
+  try {
+    const data = await client.post(`/users/${row.id}/unlock`)
+    unlockResult.username = data.username
+    unlockResult.newPassword = data.newPassword
+    unlockVisible.value = true
+    await load()
+  } catch (e) {
+    ElMessage.error(e.message)
+  } finally {
+    saving.value = false
+  }
+}
+
+function copyPassword() {
+  navigator.clipboard?.writeText(unlockResult.newPassword).then(() => ElMessage.success('已复制'))
+}
+
 async function toggleStatus(row) {
   const next = row.status === 1 ? 0 : 1
   await ElMessageBox.confirm(`确认${next === 0 ? '禁用' : '启用'}用户 ${row.username}？`, '确认', { type: 'warning' })
@@ -230,3 +279,10 @@ async function remove(row) {
 
 onMounted(load)
 </script>
+
+<style scoped>
+.mono :deep(input) {
+  font-family: Consolas, Monaco, monospace;
+  letter-spacing: 0.04em;
+}
+</style>

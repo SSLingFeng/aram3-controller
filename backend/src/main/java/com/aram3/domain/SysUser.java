@@ -10,6 +10,8 @@ public record SysUser(
         String email,
         int status,
         boolean isSuperAdmin,
+        int loginFailCount,
+        boolean locked,
         Instant lastLoginAt,
         Instant createdAt,
         Instant updatedAt

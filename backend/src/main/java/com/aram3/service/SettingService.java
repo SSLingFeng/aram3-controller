@@ -20,6 +20,8 @@ public class SettingService {
     public static final String KEY_MODS_DIR = "path.modsDir";
     public static final String KEY_INSTANCES_DIR = "path.instancesDir";
     public static final String KEY_LOGS_DIR = "path.logsDir";
+    /** 登录失败锁定阈值（连续失败次数），默认 3。 */
+    public static final String KEY_MAX_LOGIN_FAILURES = "auth.maxLoginFailures";
 
     private final SettingRepository settingRepository;
     private final Aram3Properties properties;
@@ -42,6 +44,7 @@ public class SettingService {
         result.put("instancesDir", instancesDir());
         result.put("logsDir", logsDir());
         result.put("mpmissionsDir", mpmissionsDir());
+        result.put("maxLoginFailures", maxLoginFailures());
         result.put("steamAppId", properties.getSteam().getAppId());
         result.put("workshopAppId", properties.getSteam().getWorkshopAppId());
         return result;
@@ -66,6 +69,19 @@ public class SettingService {
         }
         if (patch.containsKey("dataDir")) {
             settingRepository.upsert(KEY_DATA_DIR, normalize(patch.get("dataDir"), "数据根目录"), "数据根目录");
+        }
+        if (patch.containsKey("maxLoginFailures")) {
+            String raw = patch.get("maxLoginFailures");
+            int n;
+            try {
+                n = Integer.parseInt(raw == null ? "" : raw.trim());
+            } catch (NumberFormatException e) {
+                throw new BusinessException("登录失败锁定次数必须是整数");
+            }
+            if (n < 1 || n > 20) {
+                throw new BusinessException("登录失败锁定次数需在 1-20 之间");
+            }
+            settingRepository.upsert(KEY_MAX_LOGIN_FAILURES, String.valueOf(n), "登录失败锁定次数");
         }
 
         auditRepository.log(null, "settings.update", "system", null, String.valueOf(patch.keySet()), null);
@@ -139,5 +155,19 @@ public class SettingService {
 
     public String dataDir() {
         return settingRepository.get(KEY_DATA_DIR).orElse(properties.getPaths().getDataDir());
+    }
+
+    /** 连续登录失败多少次锁定账户（默认 3，范围 1-20）。 */
+    public int maxLoginFailures() {
+        return settingRepository.get(KEY_MAX_LOGIN_FAILURES)
+                .map(v -> {
+                    try {
+                        int n = Integer.parseInt(v.trim());
+                        return Math.max(1, Math.min(n, 20));
+                    } catch (NumberFormatException e) {
+                        return 3;
+                    }
+                })
+                .orElse(3);
     }
 }

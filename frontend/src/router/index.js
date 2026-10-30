@@ -20,6 +20,7 @@ const routes = [
       { path: 'mods', name: 'mods', component: () => import('../views/ModsView.vue') },
       { path: 'instance-mods', name: 'instance-mods', component: () => import('../views/InstanceModsView.vue') },
       { path: 'instance-config', name: 'instance-config', component: () => import('../views/InstanceConfigView.vue') },
+      { path: 'instance-control', name: 'instance-control', component: () => import('../views/InstanceControlView.vue') },
       { path: 'jobs', name: 'jobs', component: () => import('../views/JobsView.vue') },
       { path: 'steamcmd/:sessionId', name: 'steamcmd', component: () => import('../views/SteamCmdView.vue') },
       { path: 'users', name: 'users', component: () => import('../views/UsersView.vue') },

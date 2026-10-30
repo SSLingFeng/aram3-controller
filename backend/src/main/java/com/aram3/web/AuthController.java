@@ -2,6 +2,7 @@ package com.aram3.web;
 
 import com.aram3.common.ApiResponse;
 import com.aram3.service.AuthService;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.constraints.NotBlank;
 import org.springframework.web.bind.annotation.*;
 
@@ -20,8 +21,8 @@ public class AuthController {
     public record RefreshRequest(@NotBlank String refreshToken) {}
 
     @PostMapping("/login")
-    public ApiResponse<Map<String, Object>> login(@RequestBody LoginRequest req) {
-        return ApiResponse.ok(authService.login(req.username(), req.password()));
+    public ApiResponse<Map<String, Object>> login(@RequestBody LoginRequest req, HttpServletRequest request) {
+        return ApiResponse.ok(authService.login(req.username(), req.password(), request.getRemoteAddr()));
     }
 
     @PostMapping("/refresh")

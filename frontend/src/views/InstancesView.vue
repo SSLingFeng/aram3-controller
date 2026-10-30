@@ -23,8 +23,9 @@
           <span class="muted">{{ row.bindIp || '—' }}</span>
         </template>
       </el-table-column>
-      <el-table-column label="操作" width="300">
+      <el-table-column label="操作" width="380">
         <template #default="{ row }">
+          <el-button size="small" type="primary" plain @click="openControl(row)">控制台</el-button>
           <el-button size="small" @click="openEdit(row)">编辑</el-button>
           <el-button size="small" type="success" @click="start(row)">启动</el-button>
           <el-button size="small" type="warning" @click="stop(row)">停止</el-button>
@@ -83,6 +84,9 @@
 import { onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import client from '../api/http'
+import { useRouter } from 'vue-router'
+
+const router = useRouter()
 
 const instances = ref([])
 const dialogVisible = ref(false)
@@ -120,6 +124,10 @@ function openCreate() {
     rconPassword: '', profileName: '', extraArgs: ''
   })
   dialogVisible.value = true
+}
+
+function openControl(row) {
+  router.push({ path: '/instance-control', query: { id: row.id } })
 }
 
 function openEdit(row) {

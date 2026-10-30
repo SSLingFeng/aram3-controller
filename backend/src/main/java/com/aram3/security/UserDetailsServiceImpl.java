@@ -36,6 +36,7 @@ public class UserDetailsServiceImpl implements UserDetailsService {
                 .password(u.passwordHash())
                 .authorities(authorities)
                 .disabled(u.status() != 1)
+                .accountLocked(u.locked())
                 .build();
     }
 }

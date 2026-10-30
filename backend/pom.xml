@@ -13,7 +13,7 @@
 
   <groupId>com.aram3</groupId>
   <artifactId>aram3-controller</artifactId>
-  <version>0.3.0-SNAPSHOT</version>
+  <version>0.5.0-SNAPSHOT</version>
   <name>aram3-controller</name>
   <description>Aram3 web server controller (Arma 3 dedicated server manager)</description>
 

@@ -30,6 +30,8 @@ public class UserRepository {
             rs.getString("email"),
             rs.getInt("status"),
             rs.getInt("is_super_admin") == 1,
+            rs.getInt("login_fail_count"),
+            rs.getInt("locked") == 1,
             TimeMapper.getInstant(rs, "last_login_at"),
             TimeMapper.getInstant(rs, "created_at"),
             TimeMapper.getInstant(rs, "updated_at")
@@ -90,6 +92,30 @@ public class UserRepository {
     public void updateStatus(long id, int status) {
         jdbc.update("UPDATE sys_user SET status = ?, updated_at = ? WHERE id = ?",
                 status, Instant.now().toString(), id);
+    }
+
+    /** 登录失败计数 +1，返回累计次数。 */
+    public int increaseLoginFailCount(long id) {
+        jdbc.update("UPDATE sys_user SET login_fail_count = login_fail_count + 1, updated_at = ? WHERE id = ?",
+                Instant.now().toString(), id);
+        Integer n = jdbc.queryForObject("SELECT login_fail_count FROM sys_user WHERE id = ?", Integer.class, id);
+        return n == null ? 0 : n;
+    }
+
+    public void resetLoginFailCount(long id) {
+        jdbc.update("UPDATE sys_user SET login_fail_count = 0, updated_at = ? WHERE id = ?",
+                Instant.now().toString(), id);
+    }
+
+    public void setLocked(long id, boolean locked) {
+        jdbc.update("UPDATE sys_user SET locked = ?, updated_at = ? WHERE id = ?",
+                locked ? 1 : 0, Instant.now().toString(), id);
+    }
+
+    /** 解锁并清空登录失败计数。 */
+    public void unlock(long id) {
+        jdbc.update("UPDATE sys_user SET locked = 0, login_fail_count = 0, updated_at = ? WHERE id = ?",
+                Instant.now().toString(), id);
     }
 
     public void delete(long id) {

@@ -29,6 +29,7 @@ public class DataInitializer implements ApplicationRunner {
     @Override
     public void run(ApplicationArguments args) {
         ensureBindIpColumn();
+        ensureLoginColumns();
         seedRoles();
         seedAdmin();
         log.info("Aram3 data initialization done");
@@ -37,6 +38,19 @@ public class DataInitializer implements ApplicationRunner {
     private void ensureBindIpColumn() {
         try {
             jdbc.execute("ALTER TABLE game_instance ADD COLUMN bind_ip TEXT");
+        } catch (Exception ignored) {
+            // column already exists
+        }
+    }
+
+    private void ensureLoginColumns() {
+        try {
+            jdbc.execute("ALTER TABLE sys_user ADD COLUMN login_fail_count INTEGER NOT NULL DEFAULT 0");
+        } catch (Exception ignored) {
+            // column already exists
+        }
+        try {
+            jdbc.execute("ALTER TABLE sys_user ADD COLUMN locked INTEGER NOT NULL DEFAULT 0");
         } catch (Exception ignored) {
             // column already exists
         }

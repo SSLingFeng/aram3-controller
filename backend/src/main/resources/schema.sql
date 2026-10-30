@@ -9,6 +9,8 @@ CREATE TABLE IF NOT EXISTS sys_user (
   email TEXT,
   status INTEGER NOT NULL DEFAULT 1,
   is_super_admin INTEGER NOT NULL DEFAULT 0,
+  login_fail_count INTEGER NOT NULL DEFAULT 0,
+  locked INTEGER NOT NULL DEFAULT 0,
   last_login_at TEXT,
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL

@@ -33,6 +33,11 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                 if (jwtService.isAccessToken(claims)
                         && SecurityContextHolder.getContext().getAuthentication() == null) {
                     UserDetails user = userDetailsService.loadUserByUsername(claims.getSubject());
+                    if (!user.isEnabled() || !user.isAccountNonLocked()) {
+                        // 被禁用/锁定的账户立即失效（含存量 token）
+                        filterChain.doFilter(request, response);
+                        return;
+                    }
                     UsernamePasswordAuthenticationToken auth =
                             new UsernamePasswordAuthenticationToken(user, null, user.getAuthorities());
                     auth.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));

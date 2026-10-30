@@ -8,6 +8,7 @@
         <el-menu-item index="/mods">模组库</el-menu-item>
         <el-menu-item index="/instance-mods">实例模组配置</el-menu-item>
         <el-menu-item index="/instance-config">实例配置文件</el-menu-item>
+        <el-menu-item index="/instance-control">实例控制台</el-menu-item>
         <el-menu-item index="/jobs">任务中心</el-menu-item>
         <el-menu-item index="/steamcmd">SteamCMD</el-menu-item>
         <el-menu-item index="/users">用户管理</el-menu-item>

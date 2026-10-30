@@ -70,7 +70,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/auth/login", "/api/v1/auth/refresh", "/actuator/health").permitAll()
                         .requestMatchers("/", "/index.html", "/favicon.ico",
                                 "/assets/**", "/static/**", "/*.js", "/*.css", "/*.svg", "/*.png",
-                                "/login", "/instances", "/maps", "/mods", "/instance-mods", "/instance-config", "/jobs", "/steamcmd", "/users", "/settings").permitAll()
+                                "/login", "/instances", "/maps", "/mods", "/instance-mods", "/instance-config", "/instance-control", "/jobs", "/steamcmd", "/users", "/settings").permitAll()
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .anyRequest().authenticated())
                 .exceptionHandling(e -> e

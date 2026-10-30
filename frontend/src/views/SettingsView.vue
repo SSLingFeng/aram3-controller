@@ -63,6 +63,17 @@
     </el-card>
 
     <el-card style="margin-top:14px">
+      <template #header>五、登录安全</template>
+      <el-form :model="form" label-width="200px">
+        <el-form-item>
+          <template #label>登录失败锁定次数</template>
+          <el-input-number v-model="form.maxLoginFailures" :min="1" :max="20" />
+          <div class="muted">非 admin 账户连续登录失败达到该次数即锁定，需超管在「用户管理」解锁并重置密码；admin 无失败次数限制（仅限本机登录）</div>
+        </el-form-item>
+      </el-form>
+    </el-card>
+
+    <el-card style="margin-top:14px">
       <template #header>只读信息</template>
       <el-form label-width="200px">
         <el-form-item>
@@ -96,6 +107,7 @@ const form = reactive({
   instancesDir: '',
   logsDir: '',
   dataDir: '',
+  maxLoginFailures: 3,
   mpmissionsDir: '',
   steamAppId: 233780,
   workshopAppId: 107410
@@ -119,7 +131,8 @@ async function save() {
       modsDir: form.modsDir,
       instancesDir: form.instancesDir,
       logsDir: form.logsDir,
-      dataDir: form.dataDir
+      dataDir: form.dataDir,
+      maxLoginFailures: String(form.maxLoginFailures)
     })
     Object.assign(form, data)
     ElMessage.success('设置已保存')

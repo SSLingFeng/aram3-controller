@@ -76,6 +76,15 @@ public class UserController {
         return ApiResponse.ok();
     }
 
+    /**
+     * 解锁账户并重置密码（16 位随机，仅返回一次）——仅超级管理员可操作。
+     */
+    @PostMapping("/{id}/unlock")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    public ApiResponse<Map<String, Object>> unlock(@PathVariable long id) {
+        return ApiResponse.ok(userAdminService.unlockAndResetPassword(id));
+    }
+
     @PostMapping("/me/password")
     public ApiResponse<Void> changeOwnPassword(@RequestBody ChangePasswordRequest req) {
         userAdminService.changeOwnPassword(req.oldPassword(), req.newPassword());
