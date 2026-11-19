@@ -6,7 +6,9 @@ import com.aram3.domain.MapCatalog;
 import com.aram3.domain.ModCatalog;
 import com.aram3.repository.ModRepository;
 import com.aram3.service.AssetService;
+import com.aram3.service.InstanceService;
 import com.aram3.service.ModImportService;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -19,12 +21,17 @@ public class AssetController {
     private final AssetService assetService;
     private final ModRepository modRepository;
     private final ModImportService modImportService;
+    private final InstanceService instanceService;
 
-    public AssetController(AssetService assetService, ModRepository modRepository, ModImportService modImportService) {
+    public AssetController(AssetService assetService, ModRepository modRepository,
+                           ModImportService modImportService, InstanceService instanceService) {
         this.assetService = assetService;
         this.modRepository = modRepository;
         this.modImportService = modImportService;
+        this.instanceService = instanceService;
     }
+
+    // ==================== 地图（全局目录，写操作需 map:manage） ====================
 
     @GetMapping("/maps")
     public ApiResponse<List<MapCatalog>> maps() {
@@ -32,6 +39,7 @@ public class AssetController {
     }
 
     @PostMapping("/maps")
+    @PreAuthorize("hasAuthority('map:manage')")
     public ApiResponse<MapCatalog> uploadMap(
             @RequestParam(required = false) String name,
             @RequestParam(required = false) String mapKey,
@@ -40,18 +48,24 @@ public class AssetController {
     }
 
     @DeleteMapping("/maps/{id}")
+    @PreAuthorize("hasAuthority('map:manage')")
     public ApiResponse<Void> deleteMap(@PathVariable long id) {
         assetService.deleteMap(id);
         return ApiResponse.ok();
     }
+
+    // ==================== 实例地图绑定（实例级 can_manage_map） ====================
 
     @PostMapping("/instances/{instanceId}/maps/{mapId}")
     public ApiResponse<MapCatalog> bindMap(
             @PathVariable long instanceId,
             @PathVariable long mapId,
             @RequestParam(defaultValue = "false") boolean active) {
+        instanceService.requireManageMap(instanceId);
         return ApiResponse.ok(assetService.bindMap(instanceId, mapId, active));
     }
+
+    // ==================== 模组库（全局，写操作需 mod:manage） ====================
 
     @GetMapping("/mods")
     public ApiResponse<List<Map<String, Object>>> mods() {
@@ -59,17 +73,20 @@ public class AssetController {
     }
 
     @PostMapping("/mods")
+    @PreAuthorize("hasAuthority('mod:manage')")
     public ApiResponse<ModCatalog> createMod(@RequestBody Map<String, String> body) {
         return ApiResponse.ok(assetService.createMod(
                 body.get("name"), body.get("workshopId"), body.get("loadType")));
     }
 
     @PostMapping(value = "/mods/preset-import", consumes = "multipart/form-data")
+    @PreAuthorize("hasAuthority('mod:manage')")
     public ApiResponse<Map<String, Object>> importHtml(@RequestParam("file") MultipartFile file) {
         return ApiResponse.ok(modImportService.importHtml(file));
     }
 
     @PostMapping("/mods/{id}/actions/download")
+    @PreAuthorize("hasAuthority('mod:manage')")
     public ApiResponse<Map<String, Object>> downloadMod(@PathVariable long id,
                                                        @RequestBody(required = false) Map<String, String> body) {
         String mode = body == null ? "DIRECT" : body.getOrDefault("mode", "DIRECT");
@@ -79,15 +96,19 @@ public class AssetController {
     public record UpdateModsRequest(List<Long> modIds, Boolean all, String mode) {}
 
     @PostMapping("/mods/actions/update")
+    @PreAuthorize("hasAuthority('mod:manage')")
     public ApiResponse<Map<String, Object>> updateMods(@RequestBody UpdateModsRequest req) {
         boolean all = Boolean.TRUE.equals(req.all());
         return ApiResponse.ok(assetService.updateMods(req.modIds(), all, req.mode()));
     }
 
     @PostMapping("/mods/actions/local-search")
+    @PreAuthorize("hasAuthority('mod:manage')")
     public ApiResponse<Map<String, Object>> localSearch() {
         return ApiResponse.ok(assetService.localSearch());
     }
+
+    // ==================== 实例模组加载配置（实例级 can_manage_mod） ====================
 
     public record InstanceModItem(Long modId, String loadType) {}
 
@@ -97,6 +118,7 @@ public class AssetController {
     public ApiResponse<List<InstanceMod>> saveLoadList(
             @PathVariable long instanceId,
             @RequestBody SaveInstanceModsRequest req) {
+        instanceService.requireManageMod(instanceId);
         java.util.Map<Long, String> desired = new java.util.HashMap<>();
         if (req.items() != null) {
             for (InstanceModItem item : req.items()) {
@@ -127,6 +149,7 @@ public class AssetController {
     public ApiResponse<Void> bindMod(
             @PathVariable long instanceId,
             @RequestBody Map<String, Object> body) {
+        instanceService.requireManageMod(instanceId);
         long modId = Long.parseLong(String.valueOf(body.get("modId")));
         String loadType = String.valueOf(body.getOrDefault("loadType", "BOTH"));
         int enabled = Integer.parseInt(String.valueOf(body.getOrDefault("enabled", 1)));
@@ -137,11 +160,13 @@ public class AssetController {
 
     @DeleteMapping("/instances/{instanceId}/mods/{modId}")
     public ApiResponse<Void> unbindMod(@PathVariable long instanceId, @PathVariable long modId) {
+        instanceService.requireManageMod(instanceId);
         assetService.unbindMod(instanceId, modId);
         return ApiResponse.ok();
     }
 
     @DeleteMapping("/mods/{id}")
+    @PreAuthorize("hasAuthority('mod:manage')")
     public ApiResponse<Void> deleteMod(@PathVariable long id) {
         assetService.deleteMod(id);
         return ApiResponse.ok();
@@ -149,6 +174,7 @@ public class AssetController {
 
     @GetMapping("/instances/{instanceId}/mods")
     public ApiResponse<List<InstanceMod>> instanceMods(@PathVariable long instanceId) {
+        instanceService.requireManageMod(instanceId);
         return ApiResponse.ok(modRepository.findInstanceMods(instanceId));
     }
 }

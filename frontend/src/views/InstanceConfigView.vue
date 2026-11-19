@@ -3,8 +3,8 @@
     <div class="page-header">
       <h2>{{ $t('instanceConfig.title') }}</h2>
       <div>
-        <el-button :disabled="!instanceId" @click="reset">{{ $t('instanceConfig.resetDefault') }}</el-button>
-        <el-button type="primary" :loading="saving" :disabled="!instanceId" @click="save">{{ $t('instanceConfig.saveConfig') }}</el-button>
+        <el-button :disabled="!instanceId || !canEditConfig" @click="reset">{{ $t('instanceConfig.resetDefault') }}</el-button>
+        <el-button type="primary" :loading="saving" :disabled="!instanceId || !canEditConfig" @click="save">{{ $t('instanceConfig.saveConfig') }}</el-button>
       </div>
     </div>
 
@@ -30,7 +30,7 @@
           v-model="serverCfg"
           type="textarea"
           :rows="18"
-          :disabled="!instanceId"
+          :disabled="!instanceId || !canEditConfig"
           :placeholder="$t('instanceConfig.serverCfgPlaceholder')"
           style="font-family: Consolas, Monaco, monospace"
         />
@@ -40,7 +40,7 @@
           v-model="basicCfg"
           type="textarea"
           :rows="18"
-          :disabled="!instanceId"
+          :disabled="!instanceId || !canEditConfig"
           :placeholder="$t('instanceConfig.basicCfgPlaceholder')"
           style="font-family: Consolas, Monaco, monospace"
         />
@@ -55,7 +55,7 @@
 </template>
 
 <script setup>
-import { onMounted, ref } from 'vue'
+import { onMounted, ref, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useI18n } from 'vue-i18n'
 import client from '../api/http'
@@ -69,6 +69,11 @@ const basicCfg = ref('')
 const preview = ref('')
 const paths = ref({})
 const saving = ref(false)
+
+// 当前选中实例的实例级权限（列表返回 myPerms）
+const canEditConfig = computed(() =>
+  !!instances.value.find((i) => i.id === instanceId.value)?.myPerms?.canEditConfig
+)
 
 async function loadMeta() {
   instances.value = await client.get('/instances')

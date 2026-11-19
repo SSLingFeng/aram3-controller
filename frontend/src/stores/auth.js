@@ -17,7 +17,10 @@ export const useAuthStore = defineStore('auth', {
     }
   },
   getters: {
-    isLogin: (s) => !!s.token
+    isLogin: (s) => !!s.token,
+    isSuperAdmin: (s) => !!s.user?.superAdmin,
+    // 全局权限码判断：超管直接放行，普通用户看 user.perms 数组（登录/me() 时后端下发）
+    hasPerm: (s) => (code) => !!s.user?.superAdmin || (s.user?.perms || []).includes(code)
   },
   actions: {
     async login(username, password) {

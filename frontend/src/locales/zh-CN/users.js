@@ -25,11 +25,15 @@ export default {
   confirmDisable: '确认禁用用户 {username}？',
   confirmEnable: '确认启用用户 {username}？',
   confirmRemove: '删除用户 {username}？此操作不可恢复。',
+  instancePerms: '实例权限',
+  instancePermsTitle: '实例权限：{username}',
+  instancePermsHint: '按实例勾选授权，保存后立即生效；超级管理员默认拥有全部权限，无需单独授权。',
   msg: {
     created: '用户已创建',
     saved: '已保存',
     passwordReset: '密码已重置',
     statusUpdated: '已更新状态',
-    deleted: '已删除'
+    deleted: '已删除',
+    permsSaved: '实例权限已保存'
   }
 }

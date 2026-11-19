@@ -39,5 +39,6 @@ export default {
   language: 'Language',
   confirmDelete: 'Delete {name}? This cannot be undone.',
   notFound: 'No data found',
-  required: 'Required'
+  required: 'Required',
+  noPerm: 'You do not have permission to access this page'
 }

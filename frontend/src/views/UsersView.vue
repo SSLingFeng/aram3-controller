@@ -30,10 +30,12 @@
           <span class="muted">{{ row.lastLoginAt || '—' }}</span>
         </template>
       </el-table-column>
-      <el-table-column :label="$t('common.action')" width="400" fixed="right">
+      <el-table-column :label="$t('common.action')" width="480" fixed="right">
         <template #default="{ row }">
           <el-button size="small" @click="openEdit(row)">{{ $t('common.edit') }}</el-button>
           <el-button size="small" type="warning" @click="openReset(row)">{{ $t('users.resetPassword') }}</el-button>
+          <el-button v-if="auth.hasPerm('instance:grant')" size="small" type="primary" plain
+                     :disabled="!!row.superAdmin" @click="openPerms(row)">{{ $t('users.instancePerms') }}</el-button>
           <el-button v-if="row.locked" size="small" type="danger" @click="unlock(row)">{{ $t('users.unlockReset') }}</el-button>
           <el-button size="small" :type="row.status === 1 ? 'info' : 'success'" @click="toggleStatus(row)">
             {{ row.status === 1 ? $t('common.disabled') : $t('common.enabled') }}
@@ -130,6 +132,32 @@
         <el-button type="primary" @click="unlockVisible = false">{{ $t('users.iHaveSaved') }}</el-button>
       </template>
     </el-dialog>
+
+    <!-- 实例权限矩阵 -->
+    <el-dialog v-model="permsVisible" :title="$t('users.instancePermsTitle', { username: permsUser.username })" width="980px">
+      <el-alert type="info" :closable="false" style="margin-bottom:12px"
+                :title="$t('users.instancePermsHint')" />
+      <el-table :data="permsMatrix" border stripe v-loading="permsLoading" size="small">
+        <el-table-column prop="instanceName" :label="$t('common.name')" min-width="140" fixed="left">
+          <template #default="{ row }">
+            {{ row.instanceName }}
+            <span class="muted">({{ row.instanceCode }})</span>
+          </template>
+        </el-table-column>
+        <el-table-column v-for="f in permFields" :key="f" width="92" align="center">
+          <template #header>
+            <div class="perm-col-head">{{ $t('perms.instance.' + f) }}</div>
+          </template>
+          <template #default="{ row }">
+            <el-switch v-model="row[f]" />
+          </template>
+        </el-table-column>
+      </el-table>
+      <template #footer>
+        <el-button @click="permsVisible = false">{{ $t('common.cancel') }}</el-button>
+        <el-button type="primary" :loading="saving" @click="savePerms">{{ $t('common.save') }}</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -138,14 +166,26 @@ import { onMounted, reactive, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import client from '../api/http'
+import { useAuthStore } from '../stores/auth'
 
 const { t } = useI18n({ useScope: 'global' })
+const auth = useAuthStore()
 const users = ref([])
 const roles = ref([])
 const saving = ref(false)
 const createVisible = ref(false)
 const editVisible = ref(false)
 const resetVisible = ref(false)
+
+// 实例权限矩阵：10 个开关字段（与后端 user_instance_perm 一一对应）
+const permFields = [
+  'canView', 'canStartStop', 'canEditCore', 'canEditConfig', 'canManageMap',
+  'canManageMod', 'canTransferFiles', 'canViewLogs', 'canRcon', 'canSchedule'
+]
+const permsVisible = ref(false)
+const permsLoading = ref(false)
+const permsUser = reactive({ id: 0, username: '' })
+const permsMatrix = ref([])
 
 const createForm = reactive({
   username: '', password: '', displayName: '', email: '', superAdmin: false, roleIds: []
@@ -279,6 +319,41 @@ async function remove(row) {
   }
 }
 
+async function openPerms(row) {
+  permsUser.id = row.id
+  permsUser.username = row.username
+  permsVisible.value = true
+  permsLoading.value = true
+  try {
+    const data = await client.get(`/users/${row.id}/instance-perms`)
+    permsMatrix.value = data.map((m) => ({ ...m }))
+  } catch (e) {
+    ElMessage.error(e.message)
+    permsVisible.value = false
+  } finally {
+    permsLoading.value = false
+  }
+}
+
+async function savePerms() {
+  saving.value = true
+  try {
+    await client.put(`/users/${permsUser.id}/instance-perms`, {
+      items: permsMatrix.value.map((m) => {
+        const item = { instanceId: m.instanceId }
+        permFields.forEach((f) => { item[f] = !!m[f] })
+        return item
+      })
+    })
+    ElMessage.success(t('users.msg.permsSaved'))
+    permsVisible.value = false
+  } catch (e) {
+    ElMessage.error(e.message)
+  } finally {
+    saving.value = false
+  }
+}
+
 onMounted(load)
 </script>
 
@@ -286,5 +361,11 @@ onMounted(load)
 .mono :deep(input) {
   font-family: Consolas, Monaco, monospace;
   letter-spacing: 0.04em;
+}
+.perm-col-head {
+  font-size: 12px;
+  line-height: 1.3;
+  white-space: normal;
+  word-break: keep-all;
 }
 </style>

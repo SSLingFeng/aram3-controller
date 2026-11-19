@@ -13,6 +13,7 @@ export default {
     jobs: '任务中心',
     steamcmd: 'SteamCMD',
     users: '用户管理',
+    roles: '角色与权限',
     settings: '系统设置'
   },
   titles: {
@@ -25,6 +26,7 @@ export default {
     jobs: '任务中心',
     steamcmd: 'SteamCMD 控制台',
     users: '用户管理',
+    roles: '角色与权限',
     settings: '系统设置'
   }
 }

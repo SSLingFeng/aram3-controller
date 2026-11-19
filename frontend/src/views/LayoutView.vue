@@ -9,10 +9,11 @@
         <el-menu-item index="/instance-mods">{{ $t('layout.menu.instanceMods') }}</el-menu-item>
         <el-menu-item index="/instance-config">{{ $t('layout.menu.instanceConfig') }}</el-menu-item>
         <el-menu-item index="/instance-control">{{ $t('layout.menu.instanceControl') }}</el-menu-item>
-        <el-menu-item index="/jobs">{{ $t('layout.menu.jobs') }}</el-menu-item>
-        <el-menu-item index="/steamcmd">{{ $t('layout.menu.steamcmd') }}</el-menu-item>
-        <el-menu-item index="/users">{{ $t('layout.menu.users') }}</el-menu-item>
-        <el-menu-item index="/settings">{{ $t('layout.menu.settings') }}</el-menu-item>
+        <el-menu-item v-if="auth.hasPerm('job:manage')" index="/jobs">{{ $t('layout.menu.jobs') }}</el-menu-item>
+        <el-menu-item v-if="auth.hasPerm('steamcmd:use')" index="/steamcmd">{{ $t('layout.menu.steamcmd') }}</el-menu-item>
+        <el-menu-item v-if="auth.hasPerm('user:manage')" index="/users">{{ $t('layout.menu.users') }}</el-menu-item>
+        <el-menu-item v-if="auth.hasPerm('user:manage')" index="/roles">{{ $t('layout.menu.roles') }}</el-menu-item>
+        <el-menu-item v-if="auth.hasPerm('system:settings')" index="/settings">{{ $t('layout.menu.settings') }}</el-menu-item>
       </el-menu>
     </el-aside>
     <el-container>
@@ -55,6 +56,7 @@ const pathKeys = {
   '/jobs': 'jobs',
   '/steamcmd': 'steamcmd',
   '/users': 'users',
+  '/roles': 'roles',
   '/settings': 'settings'
 }
 

@@ -2,7 +2,7 @@
   <div class="page">
     <div class="page-header">
       <h2>{{ $t('instanceMods.title') }}</h2>
-      <el-button type="primary" :loading="saving" :disabled="!instanceId" @click="save">{{ $t('instanceMods.saveInstanceConfig') }}</el-button>
+      <el-button type="primary" :loading="saving" :disabled="!instanceId || !canManageMod" @click="save">{{ $t('instanceMods.saveInstanceConfig') }}</el-button>
     </div>
 
     <el-form inline>
@@ -72,6 +72,11 @@ const rows = ref([])
 const instanceId = ref(null)
 const keyword = ref('')
 const saving = ref(false)
+
+// 当前选中实例的实例级权限（列表返回 myPerms）
+const canManageMod = computed(() =>
+  !!instances.value.find((i) => i.id === instanceId.value)?.myPerms?.canManageMod
+)
 
 const filtered = computed(() => {
   const k = keyword.value.trim().toLowerCase()

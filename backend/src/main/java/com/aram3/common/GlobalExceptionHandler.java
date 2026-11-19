@@ -24,7 +24,11 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(BusinessException.class)
     public ResponseEntity<ApiResponse<Void>> handleBusiness(BusinessException ex) {
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+        // 业务码为合法 HTTP 状态码时（如 401/403/404）同步映射，前端拦截器按状态码处理
+        HttpStatus status = (ex.getCode() >= 400 && ex.getCode() < 600)
+                ? HttpStatus.valueOf(ex.getCode())
+                : HttpStatus.BAD_REQUEST;
+        return ResponseEntity.status(status)
                 .body(ApiResponse.error(ex.getCode(), ex.getMessage()));
     }
 

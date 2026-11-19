@@ -13,6 +13,7 @@ export default {
     jobs: 'Jobs',
     steamcmd: 'SteamCMD',
     users: 'Users',
+    roles: 'Roles & Permissions',
     settings: 'Settings'
   },
   titles: {
@@ -25,6 +26,7 @@ export default {
     jobs: 'Jobs',
     steamcmd: 'SteamCMD Console',
     users: 'Users',
+    roles: 'Roles & Permissions',
     settings: 'Settings'
   }
 }

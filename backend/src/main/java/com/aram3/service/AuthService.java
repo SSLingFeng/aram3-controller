@@ -3,8 +3,10 @@ package com.aram3.service;
 import com.aram3.common.BusinessException;
 import com.aram3.domain.SysUser;
 import com.aram3.repository.AuditRepository;
+import com.aram3.repository.RoleRepository;
 import com.aram3.repository.UserRepository;
 import com.aram3.security.JwtService;
+import com.aram3.security.PermCode;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.DisabledException;
@@ -21,6 +23,7 @@ import java.util.Map;
 public class AuthService {
     private final AuthenticationManager authenticationManager;
     private final UserRepository userRepository;
+    private final RoleRepository roleRepository;
     private final JwtService jwtService;
     private final PasswordEncoder passwordEncoder;
     private final AuditRepository auditRepository;
@@ -28,12 +31,14 @@ public class AuthService {
 
     public AuthService(AuthenticationManager authenticationManager,
                        UserRepository userRepository,
+                       RoleRepository roleRepository,
                        JwtService jwtService,
                        PasswordEncoder passwordEncoder,
                        AuditRepository auditRepository,
                        SettingService settingService) {
         this.authenticationManager = authenticationManager;
         this.userRepository = userRepository;
+        this.roleRepository = roleRepository;
         this.jwtService = jwtService;
         this.passwordEncoder = passwordEncoder;
         this.auditRepository = auditRepository;
@@ -147,6 +152,10 @@ public class AuthService {
         m.put("locked", user.locked());
         m.put("lastLoginAt", user.lastLoginAt());
         m.put("createdAt", user.createdAt());
+        // 权限码（超管 = 全部），供前端菜单/按钮显隐
+        m.put("perms", user.isSuperAdmin()
+                ? PermCode.allCodes()
+                : roleRepository.findPermCodesByUser(user.id()));
         return m;
     }
 }

@@ -2,6 +2,7 @@ package com.aram3.web;
 
 import com.aram3.common.ApiResponse;
 import com.aram3.service.KeyService;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -25,6 +26,7 @@ public class KeyController {
     }
 
     @PostMapping("/mods/actions/move-keys")
+    @PreAuthorize("hasAuthority('mod:manage')")
     public ApiResponse<Map<String, Object>> moveKeys(@RequestBody(required = false) MoveKeysRequest req) {
         boolean all = req == null || !Boolean.FALSE.equals(req.all());
         List<Long> ids = req == null ? null : req.modIds();
@@ -32,12 +34,14 @@ public class KeyController {
     }
 
     @DeleteMapping("/keys")
+    @PreAuthorize("hasAuthority('mod:manage')")
     public ApiResponse<Void> deleteKey(@RequestParam String fileName) {
         keyService.deleteKey(fileName);
         return ApiResponse.ok();
     }
 
     @PostMapping("/keys/upload")
+    @PreAuthorize("hasAuthority('mod:manage')")
     public ApiResponse<Map<String, Object>> upload(@RequestParam("file") MultipartFile file) {
         return ApiResponse.ok(keyService.uploadKey(file));
     }

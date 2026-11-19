@@ -66,6 +66,7 @@ CREATE TABLE IF NOT EXISTS user_instance_perm (
   instance_id INTEGER NOT NULL REFERENCES game_instance(id) ON DELETE CASCADE,
   can_view INTEGER NOT NULL DEFAULT 1,
   can_start_stop INTEGER NOT NULL DEFAULT 0,
+  can_edit_core INTEGER NOT NULL DEFAULT 0,
   can_edit_config INTEGER NOT NULL DEFAULT 0,
   can_manage_map INTEGER NOT NULL DEFAULT 0,
   can_manage_mod INTEGER NOT NULL DEFAULT 0,

@@ -39,5 +39,6 @@ export default {
   language: '语言',
   confirmDelete: '确认删除 {name}？此操作不可恢复。',
   notFound: '未找到数据',
-  required: '必填'
+  required: '必填',
+  noPerm: '没有权限访问该页面'
 }

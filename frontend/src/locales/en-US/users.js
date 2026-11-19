@@ -25,11 +25,15 @@ export default {
   confirmDisable: 'Disable user {username}?',
   confirmEnable: 'Enable user {username}?',
   confirmRemove: 'Delete user {username}? This cannot be undone.',
+  instancePerms: 'Instance Perms',
+  instancePermsTitle: 'Instance Permissions: {username}',
+  instancePermsHint: 'Grant per instance by toggling switches; takes effect immediately after saving. Super admins already have all permissions and need no grants.',
   msg: {
     created: 'User created',
     saved: 'Saved',
     passwordReset: 'Password has been reset',
     statusUpdated: 'Status updated',
-    deleted: 'Deleted'
+    deleted: 'Deleted',
+    permsSaved: 'Instance permissions saved'
   }
 }

@@ -4,6 +4,7 @@ import com.aram3.common.ApiResponse;
 import com.aram3.domain.JobTask;
 import com.aram3.infra.process.ProcessService;
 import com.aram3.service.JobService;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -21,11 +22,13 @@ public class JobController {
     }
 
     @GetMapping("/jobs")
+    @PreAuthorize("hasAuthority('job:manage')")
     public ApiResponse<List<JobTask>> jobs() {
         return ApiResponse.ok(jobService.recent());
     }
 
     @GetMapping("/jobs/{id}")
+    @PreAuthorize("hasAuthority('job:manage')")
     public ApiResponse<JobTask> job(@PathVariable long id) {
         return ApiResponse.ok(jobService.get(id));
     }

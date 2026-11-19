@@ -10,6 +10,8 @@ import instanceMods from './instanceMods'
 import jobs from './jobs'
 import steamcmd from './steamcmd'
 import users from './users'
+import roles from './roles'
+import perms from './perms'
 import settings from './settings'
 
 export default {
@@ -25,6 +27,8 @@ export default {
   jobs,
   steamcmd,
   users,
+  roles,
+  perms,
   settings
 }
 

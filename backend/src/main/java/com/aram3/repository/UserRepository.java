@@ -6,6 +6,7 @@ import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
 import org.springframework.jdbc.support.KeyHolder;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.sql.PreparedStatement;
 import java.sql.Statement;
@@ -118,7 +119,20 @@ public class UserRepository {
                 Instant.now().toString(), id);
     }
 
+    @Transactional
     public void delete(long id) {
+        // 先清理引用 sys_user 但无 ON DELETE CASCADE 的列，避免外键约束导致删除失败
+        jdbc.update("UPDATE audit_log SET user_id = NULL WHERE user_id = ?", id);
+        jdbc.update("UPDATE game_instance SET created_by = NULL WHERE created_by = ?", id);
+        jdbc.update("UPDATE map_catalog SET created_by = NULL WHERE created_by = ?", id);
+        jdbc.update("UPDATE mod_catalog SET created_by = NULL WHERE created_by = ?", id);
+        jdbc.update("UPDATE instance_schedule SET created_by = NULL WHERE created_by = ?", id);
+        jdbc.update("UPDATE job_task SET created_by = NULL WHERE created_by = ?", id);
+        jdbc.update("UPDATE backup_record SET created_by = NULL WHERE created_by = ?", id);
+        // 带 CASCADE 的子表显式清理（双保险，同时兼容旧库未建 CASCADE 的情况）
+        jdbc.update("DELETE FROM sys_user_role WHERE user_id = ?", id);
+        jdbc.update("DELETE FROM user_instance_perm WHERE user_id = ?", id);
+        jdbc.update("DELETE FROM user_token WHERE user_id = ?", id);
         jdbc.update("DELETE FROM sys_user WHERE id = ?", id);
     }
 

@@ -35,5 +35,7 @@ export default {
     startSubmitted: 'Start task #{id} submitted',
     stopSubmitted: 'Stop task #{id} submitted',
     deleted: 'Deleted'
-  }
+  },
+  deleteWarningPath: 'The instance data directory on disk will also be deleted: {path}',
+  rconPasswordNoPerm: 'The "Core Config" permission is required to view or change the RCON password'
 }

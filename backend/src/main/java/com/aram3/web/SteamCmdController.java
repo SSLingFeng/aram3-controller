@@ -2,7 +2,8 @@ package com.aram3.web;
 
 import com.aram3.common.ApiResponse;
 import com.aram3.infra.steam.SteamCmdSessionManager;
-import org.springframework.security.core.Authentication;
+import com.aram3.security.AuthFacade;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -10,6 +11,7 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/steamcmd")
+@PreAuthorize("hasAuthority('steamcmd:use')")
 public class SteamCmdController {
     private final SteamCmdSessionManager sessionManager;
 
@@ -28,15 +30,15 @@ public class SteamCmdController {
 
     public record CommandRequest(String command) {}
 
-    private Long userId(Authentication auth) {
-        return null;
+    private Long userId() {
+        return AuthFacade.currentUserId();
     }
 
     @PostMapping("/sessions")
-    public ApiResponse<Map<String, Object>> start(@RequestBody StartRequest req, Authentication auth) {
+    public ApiResponse<Map<String, Object>> start(@RequestBody StartRequest req) {
         var session = sessionManager.start(
                 req.username(), req.password(), req.guardCode(), req.mode(),
-                Boolean.TRUE.equals(req.all()), req.modIds(), userId(auth));
+                Boolean.TRUE.equals(req.all()), req.modIds(), userId());
         return ApiResponse.ok(session.toView());
     }
 
@@ -53,13 +55,12 @@ public class SteamCmdController {
 
     @PostMapping("/sessions/{id}/command")
     public ApiResponse<Map<String, Object>> command(@PathVariable String id,
-                                                    @RequestBody CommandRequest req,
-                                                    Authentication auth) {
-        return ApiResponse.ok(sessionManager.sendCommand(id, req.command(), userId(auth)));
+                                                    @RequestBody CommandRequest req) {
+        return ApiResponse.ok(sessionManager.sendCommand(id, req.command(), userId()));
     }
 
     @PostMapping("/sessions/{id}/stop")
-    public ApiResponse<Map<String, Object>> stop(@PathVariable String id, Authentication auth) {
-        return ApiResponse.ok(sessionManager.stop(id, userId(auth)));
+    public ApiResponse<Map<String, Object>> stop(@PathVariable String id) {
+        return ApiResponse.ok(sessionManager.stop(id, userId()));
     }
 }

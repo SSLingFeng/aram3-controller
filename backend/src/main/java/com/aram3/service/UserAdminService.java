@@ -1,8 +1,12 @@
 package com.aram3.service;
 
 import com.aram3.common.BusinessException;
+import com.aram3.domain.GameInstance;
 import com.aram3.domain.SysUser;
+import com.aram3.domain.UserInstancePerm;
 import com.aram3.repository.AuditRepository;
+import com.aram3.repository.InstanceRepository;
+import com.aram3.repository.PermRepository;
 import com.aram3.repository.UserRepository;
 import com.aram3.security.AuthFacade;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -13,20 +17,43 @@ import java.security.SecureRandom;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Service
 public class UserAdminService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final AuditRepository auditRepository;
+    private final InstanceRepository instanceRepository;
+    private final PermRepository permRepository;
 
     public UserAdminService(UserRepository userRepository,
                             PasswordEncoder passwordEncoder,
-                            AuditRepository auditRepository) {
+                            AuditRepository auditRepository,
+                            InstanceRepository instanceRepository,
+                            PermRepository permRepository) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.auditRepository = auditRepository;
+        this.instanceRepository = instanceRepository;
+        this.permRepository = permRepository;
     }
+
+    /** 用户×实例权限矩阵的一行（提交体）。 */
+    public record InstancePermItem(
+            long instanceId,
+            boolean canView,
+            boolean canStartStop,
+            boolean canEditCore,
+            boolean canEditConfig,
+            boolean canManageMap,
+            boolean canManageMod,
+            boolean canTransferFiles,
+            boolean canViewLogs,
+            boolean canRcon,
+            boolean canSchedule
+    ) {}
 
     public List<Map<String, Object>> listUsers() {
         return userRepository.findAll().stream().map(u -> {
@@ -45,6 +72,60 @@ public class UserAdminService {
             m.put("roleIds", userRepository.findRoleIds(u.id()));
             return m;
         }).toList();
+    }
+
+    /** 某用户对全部实例的权限矩阵（未授权的实例也列出，开关全为 false）。 */
+    public List<Map<String, Object>> listInstancePerms(long userId) {
+        requireUser(userId);
+        Map<Long, UserInstancePerm> existing = permRepository.findByUser(userId).stream()
+                .collect(Collectors.toMap(UserInstancePerm::instanceId, Function.identity()));
+        return instanceRepository.findAll().stream().map(inst -> {
+            UserInstancePerm p = existing.get(inst.id());
+            Map<String, Object> m = new HashMap<>();
+            m.put("instanceId", inst.id());
+            m.put("instanceCode", inst.code());
+            m.put("instanceName", inst.name());
+            m.put("canView", p != null && p.hasView());
+            m.put("canStartStop", p != null && p.hasStartStop());
+            m.put("canEditCore", p != null && p.hasEditCore());
+            m.put("canEditConfig", p != null && p.hasEditConfig());
+            m.put("canManageMap", p != null && p.hasManageMap());
+            m.put("canManageMod", p != null && p.hasManageMod());
+            m.put("canTransferFiles", p != null && p.hasTransferFiles());
+            m.put("canViewLogs", p != null && p.hasViewLogs());
+            m.put("canRcon", p != null && p.hasRcon());
+            m.put("canSchedule", p != null && p.hasSchedule());
+            return m;
+        }).toList();
+    }
+
+    /** 批量保存用户×实例权限矩阵。 */
+    @Transactional
+    public void saveInstancePerms(long userId, List<InstancePermItem> items) {
+        SysUser target = userRepository.findById(userId)
+                .orElseThrow(() -> new BusinessException("用户不存在"));
+        if (target.isSuperAdmin()) {
+            throw new BusinessException("超级管理员默认拥有全部权限，无需单独授权");
+        }
+        if (items != null) {
+            for (InstancePermItem item : items) {
+                GameInstance inst = instanceRepository.findById(item.instanceId())
+                        .orElseThrow(() -> new BusinessException("实例不存在: " + item.instanceId()));
+                permRepository.upsert(new UserInstancePerm(
+                        null, userId, inst.id(),
+                        b(item.canView()), b(item.canStartStop()), b(item.canEditCore()),
+                        b(item.canEditConfig()), b(item.canManageMap()), b(item.canManageMod()),
+                        b(item.canTransferFiles()), b(item.canViewLogs()), b(item.canRcon()),
+                        b(item.canSchedule())
+                ));
+            }
+        }
+        auditRepository.log(currentUserId(), "perm.grant", "user", userId,
+                "instances=" + (items == null ? 0 : items.size()), null);
+    }
+
+    private static int b(boolean v) {
+        return v ? 1 : 0;
     }
 
     @Transactional

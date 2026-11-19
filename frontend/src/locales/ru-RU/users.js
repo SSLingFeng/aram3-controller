@@ -25,11 +25,15 @@ export default {
   confirmDisable: 'Отключить пользователя {username}?',
   confirmEnable: 'Включить пользователя {username}?',
   confirmRemove: 'Удалить пользователя {username}? Это действие нельзя отменить.',
+  instancePerms: 'Права на экземпляры',
+  instancePermsTitle: 'Права на экземпляры: {username}',
+  instancePermsHint: 'Выдавайте права отдельно для каждого экземпляра; изменения применяются сразу после сохранения. Суперадминистраторы уже обладают всеми правами.',
   msg: {
     created: 'Пользователь создан',
     saved: 'Сохранено',
     passwordReset: 'Пароль сброшен',
     statusUpdated: 'Статус обновлён',
-    deleted: 'Удалено'
+    deleted: 'Удалено',
+    permsSaved: 'Права на экземпляры сохранены'
   }
 }

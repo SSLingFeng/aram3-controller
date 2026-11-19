@@ -35,5 +35,7 @@ export default {
     startSubmitted: '已提交启动任务 #{id}',
     stopSubmitted: '已提交停止任务 #{id}',
     deleted: '已删除'
-  }
+  },
+  deleteWarningPath: '将同时删除磁盘上的实例数据目录：{path}',
+  rconPasswordNoPerm: '需要「核心配置」权限才能查看或修改 RCON 密码'
 }

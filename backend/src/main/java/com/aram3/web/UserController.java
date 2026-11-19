@@ -42,20 +42,22 @@ public class UserController {
 
     public record ChangePasswordRequest(@NotBlank String oldPassword, @NotBlank String newPassword) {}
 
+    public record InstancePermsRequest(List<UserAdminService.InstancePermItem> items) {}
+
     @GetMapping
-    @PreAuthorize("hasAnyRole('admin','SUPER_ADMIN')")
+    @PreAuthorize("hasAuthority('user:manage')")
     public ApiResponse<List<Map<String, Object>>> list() {
         return ApiResponse.ok(userAdminService.listUsers());
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('admin','SUPER_ADMIN')")
+    @PreAuthorize("hasAuthority('user:manage')")
     public ApiResponse<Map<String, Object>> get(@PathVariable long id) {
         return ApiResponse.ok(userAdminService.detail(id));
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('admin','SUPER_ADMIN')")
+    @PreAuthorize("hasAuthority('user:manage')")
     public ApiResponse<Map<String, Object>> create(@RequestBody CreateUserRequest req) {
         return ApiResponse.ok(userAdminService.createUser(
                 req.username(), req.password(), req.displayName(), req.email(),
@@ -63,14 +65,14 @@ public class UserController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyRole('admin','SUPER_ADMIN')")
+    @PreAuthorize("hasAuthority('user:manage')")
     public ApiResponse<Map<String, Object>> update(@PathVariable long id, @RequestBody UpdateUserRequest req) {
         return ApiResponse.ok(userAdminService.updateProfile(
                 id, req.displayName(), req.email(), req.superAdmin(), req.roleIds()));
     }
 
     @PostMapping("/{id}/password")
-    @PreAuthorize("hasAnyRole('admin','SUPER_ADMIN')")
+    @PreAuthorize("hasAuthority('user:manage')")
     public ApiResponse<Void> resetPassword(@PathVariable long id, @RequestBody ResetPasswordRequest req) {
         userAdminService.resetPassword(id, req.newPassword());
         return ApiResponse.ok();
@@ -92,22 +94,36 @@ public class UserController {
     }
 
     @PostMapping("/{id}/status")
-    @PreAuthorize("hasAnyRole('admin','SUPER_ADMIN')")
+    @PreAuthorize("hasAuthority('user:manage')")
     public ApiResponse<Void> updateStatus(@PathVariable long id, @RequestParam int status) {
         userAdminService.updateStatus(id, status);
         return ApiResponse.ok();
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAnyRole('admin','SUPER_ADMIN')")
+    @PreAuthorize("hasAuthority('user:manage')")
     public ApiResponse<Void> delete(@PathVariable long id) {
         userAdminService.delete(id);
         return ApiResponse.ok();
     }
 
     @GetMapping("/roles")
-    @PreAuthorize("hasAnyRole('admin','SUPER_ADMIN')")
+    @PreAuthorize("hasAuthority('user:manage')")
     public ApiResponse<List<Map<String, Object>>> roles() {
         return ApiResponse.ok(userRepository.findRoles());
+    }
+
+    /** 用户×实例权限矩阵（特殊权限「实例授权」持有者可用）。 */
+    @GetMapping("/{id}/instance-perms")
+    @PreAuthorize("hasAuthority('instance:grant')")
+    public ApiResponse<List<Map<String, Object>>> instancePerms(@PathVariable long id) {
+        return ApiResponse.ok(userAdminService.listInstancePerms(id));
+    }
+
+    @PutMapping("/{id}/instance-perms")
+    @PreAuthorize("hasAuthority('instance:grant')")
+    public ApiResponse<Void> saveInstancePerms(@PathVariable long id, @RequestBody InstancePermsRequest req) {
+        userAdminService.saveInstancePerms(id, req.items());
+        return ApiResponse.ok();
     }
 }

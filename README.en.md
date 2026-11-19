@@ -24,8 +24,9 @@ A multi-instance web control panel for Arma 3 (AppID 233780), built with **JDK 2
 
 ## Features (current)
 
-- JWT login; first boot prints a random admin password to backend logs
+- JWT login; first boot creates a default `admin` account (default password `admin`, change it right after login)
 - **User management**: list / create / edit (display name, email, roles, super admin) / reset password / enable-disable / delete
+- **Two-layer permission system**: ① global role permission codes — dedicated "Roles & Permissions" page; built-in roles are editable but not deletable, custom roles supported (referenced roles cannot be deleted); controls feature menus, instance creation, instance granting, etc. ② instance-level ACL — per user×instance matrix in "Users → Instance Perms" with 10 switches (view / start-stop / core config / instance config / maps / mods / logs / RCON / scheduled jobs / file transfer); super admin is decided solely by the user flag and bypasses all checks; role and permission changes take effect immediately without re-login; the RCON password is only sent to users with the "Core Config" permission
 - **System settings**: game server install dir, SteamCMD path, mods/Workshop dir, instance root, logs/data dirs (hot-applied)
 - Instance CRUD, start/stop, start-command preview (absolute `server.cfg` / `basic.cfg`, `-ip`, custom args)
 - Map PBO upload (auto `mapKey`) / delete; files go to game `mpmissions`
@@ -93,7 +94,7 @@ mvn spring-boot:run
 ```
 
 Open **http://127.0.0.1:8080**.  
-On **first start**, the backend log prints a random `admin` password (6 chars: upper + lower + digit + symbol). Change it after login.
+On **first start**, a default `admin` account is created (username `admin`, default password `admin`). Change it right after login.
 
 Optional dev mode (separate frontend dev server with hot reload):
 

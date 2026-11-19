@@ -2,12 +2,14 @@ package com.aram3.web;
 
 import com.aram3.common.ApiResponse;
 import com.aram3.service.SettingService;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/system")
+@PreAuthorize("hasAuthority('system:settings')")
 public class SettingController {
     private final SettingService settingService;
 

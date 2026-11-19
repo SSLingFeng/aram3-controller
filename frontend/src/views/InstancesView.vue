@@ -2,7 +2,7 @@
   <div class="page">
     <div class="page-header">
       <h2>{{ $t('instances.title') }}</h2>
-      <el-button type="primary" @click="openCreate">{{ $t('instances.createBtn') }}</el-button>
+      <el-button v-if="auth.hasPerm('instance:create')" type="primary" @click="openCreate">{{ $t('instances.createBtn') }}</el-button>
     </div>
 
     <el-table :data="instances" border stripe>
@@ -25,11 +25,11 @@
       </el-table-column>
       <el-table-column :label="$t('common.action')" width="380">
         <template #default="{ row }">
-          <el-button size="small" type="primary" plain @click="openControl(row)">{{ $t('instances.actions.console') }}</el-button>
-          <el-button size="small" @click="openEdit(row)">{{ $t('common.edit') }}</el-button>
-          <el-button size="small" type="success" @click="start(row)">{{ $t('instances.actions.start') }}</el-button>
-          <el-button size="small" type="warning" @click="stop(row)">{{ $t('instances.actions.stop') }}</el-button>
-          <el-button size="small" type="danger" @click="remove(row)">{{ $t('common.delete') }}</el-button>
+          <el-button v-if="row.myPerms?.canRcon" size="small" type="primary" plain @click="openControl(row)">{{ $t('instances.actions.console') }}</el-button>
+          <el-button v-if="row.myPerms?.canEditCore" size="small" @click="openEdit(row)">{{ $t('common.edit') }}</el-button>
+          <el-button v-if="row.myPerms?.canStartStop" size="small" type="success" @click="start(row)">{{ $t('instances.actions.start') }}</el-button>
+          <el-button v-if="row.myPerms?.canStartStop" size="small" type="warning" @click="stop(row)">{{ $t('instances.actions.stop') }}</el-button>
+          <el-button v-if="row.myPerms?.canEditCore" size="small" type="danger" @click="remove(row)">{{ $t('common.delete') }}</el-button>
         </template>
       </el-table-column>
     </el-table>
@@ -57,7 +57,9 @@
           <el-input-number v-model="form.rconPort" :min="1" :max="65535" />
         </el-form-item>
         <el-form-item :label="$t('instances.form.rconPassword')">
-          <el-input v-model="form.rconPassword" type="password" show-password />
+          <el-input v-model="form.rconPassword" type="password" show-password
+                    :disabled="isEdit && !editCanEditCore" />
+          <div v-if="isEdit && !editCanEditCore" class="muted">{{ $t('instances.rconPasswordNoPerm') }}</div>
         </el-form-item>
         <el-form-item :label="$t('instances.form.profileName')">
           <el-input v-model="form.profileName" :placeholder="$t('instances.form.profileNamePlaceholder')" />
@@ -86,14 +88,18 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { useI18n } from 'vue-i18n'
 import client from '../api/http'
 import { useRouter } from 'vue-router'
+import { useAuthStore } from '../stores/auth'
 
 const { t } = useI18n({ useScope: 'global' })
 const router = useRouter()
+const auth = useAuthStore()
 
 const instances = ref([])
 const dialogVisible = ref(false)
 const isEdit = ref(false)
 const saving = ref(false)
+// 当前编辑实例的 myPerms（编辑按钮只对 canEditCore 用户可见，双保险）
+const editCanEditCore = ref(false)
 const form = reactive({
   id: 0,
   code: '',
@@ -134,6 +140,7 @@ function openControl(row) {
 
 function openEdit(row) {
   isEdit.value = true
+  editCanEditCore.value = !!row.myPerms?.canEditCore
   Object.assign(form, {
     id: row.id,
     code: row.code,
@@ -159,7 +166,8 @@ async function save() {
       gamePort: form.gamePort,
       steamQueryPort: form.steamQueryPort,
       rconPort: form.rconPort,
-      rconPassword: form.rconPassword,
+      // 无「核心配置」权限时后端不下发密码，传 null 保持原值不被覆盖
+      rconPassword: isEdit.value && !editCanEditCore.value ? null : form.rconPassword,
       profileName: form.profileName,
       extraArgs: form.extraArgs
     }
@@ -200,7 +208,11 @@ async function stop(row) {
 }
 
 async function remove(row) {
-  await ElMessageBox.confirm(t('common.confirmDelete', { name: row.name }), t('common.warning'), { type: 'warning' })
+  await ElMessageBox.confirm(
+    t('common.confirmDelete', { name: row.name }) + (row.rootPath ? '\n' + t('instances.deleteWarningPath', { path: row.rootPath }) : ''),
+    t('common.warning'),
+    { type: 'warning' }
+  )
   try {
     await client.delete(`/instances/${row.id}`)
     ElMessage.success(t('instances.msg.deleted'))

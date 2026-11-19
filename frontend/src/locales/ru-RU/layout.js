@@ -13,6 +13,7 @@ export default {
     jobs: 'Задачи',
     steamcmd: 'SteamCMD',
     users: 'Пользователи',
+    roles: 'Роли и права',
     settings: 'Настройки'
   },
   titles: {
@@ -25,6 +26,7 @@ export default {
     jobs: 'Центр задач',
     steamcmd: 'Консоль SteamCMD',
     users: 'Управление пользователями',
+    roles: 'Роли и права',
     settings: 'Настройки системы'
   }
 }

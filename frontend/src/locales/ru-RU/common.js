@@ -39,5 +39,6 @@ export default {
   language: 'Язык',
   confirmDelete: 'Удалить {name}? Это действие нельзя отменить.',
   notFound: 'Данные не найдены',
-  required: 'Обязательно'
+  required: 'Обязательно',
+  noPerm: 'У вас нет прав доступа к этой странице'
 }

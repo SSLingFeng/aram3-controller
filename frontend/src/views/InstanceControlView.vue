@@ -23,7 +23,11 @@
     <el-alert v-if="!instanceId" type="info" :closable="false" style="margin-bottom:12px"
               :title="$t('instanceControl.selectInstanceAlert')" />
 
-    <template v-if="instanceId">
+    <!-- 无 RCON 权限：整个控制台只读不可用 -->
+    <el-alert v-else-if="!canRcon" type="warning" :closable="false"
+              :title="$t('common.noPerm')" />
+
+    <template v-if="instanceId && canRcon">
       <el-tabs v-model="tab">
         <!-- 玩家 -->
         <el-tab-pane :label="$t('instanceControl.tabs.players')" name="players">
@@ -301,6 +305,11 @@ const lastResult = ref('')
 
 const isSuper = computed(() => !!auth.user?.superAdmin)
 
+// 当前实例的 RCON 权限（实例列表/详情均带 myPerms）
+const canRcon = computed(() =>
+  !!instanceId.value && !!instances.value.find((i) => i.id === instanceId.value)?.myPerms?.canRcon
+)
+
 // 表单
 const sayForm = reactive({ message: '' })
 const sayToForm = reactive({ playerNum: 0, message: '' })
@@ -395,7 +404,7 @@ function onInstanceChange() {
 
 // ---------------- 玩家 ----------------
 async function loadPlayers() {
-  if (!instanceId.value) return
+  if (!instanceId.value || !canRcon.value) return
   loading.value = true
   try {
     players.value = await client.get(base.value + '/players')
@@ -569,7 +578,7 @@ async function sendExec() {
 }
 
 async function refreshAll() {
-  if (!instanceId.value) return
+  if (!instanceId.value || !canRcon.value) return
   await Promise.all([loadInstance(), loadPlayers(), loadBansFile()])
 }
 

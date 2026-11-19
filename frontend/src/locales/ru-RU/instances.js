@@ -35,5 +35,7 @@ export default {
     startSubmitted: 'Отправлена задача запуска #{id}',
     stopSubmitted: 'Отправлена задача остановки #{id}',
     deleted: 'Удалено'
-  }
+  },
+  deleteWarningPath: 'Каталог данных экземпляра на диске также будет удалён: {path}',
+  rconPasswordNoPerm: 'Для просмотра или изменения пароля RCON требуется право «Основная конфигурация»'
 }
